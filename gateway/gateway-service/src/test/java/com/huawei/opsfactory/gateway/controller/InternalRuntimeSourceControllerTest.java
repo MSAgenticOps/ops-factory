@@ -10,10 +10,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
+import com.huawei.opsfactory.gateway.config.BaseControllerTestConfig;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
-import com.huawei.opsfactory.gateway.config.BaseControllerTestConfig;
 import com.huawei.opsfactory.gateway.monitoring.MetricsBuffer;
 import com.huawei.opsfactory.gateway.monitoring.MetricsSnapshot;
 import com.huawei.opsfactory.gateway.process.InstanceManager;

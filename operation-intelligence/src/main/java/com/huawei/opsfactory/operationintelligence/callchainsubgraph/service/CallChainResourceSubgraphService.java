@@ -31,27 +31,12 @@ import java.util.stream.Collectors;
  */
 @Service
 public class CallChainResourceSubgraphService {
-    private static final Set<String> DEFAULT_RELATION_TYPES = Set.of(
-        "contains",
-        "contains_service",
-        "runs_on",
-        "belongs_to_cluster",
-        "manages");
+    private static final Set<String> DEFAULT_RELATION_TYPES =
+        Set.of("contains", "contains_service", "runs_on", "belongs_to_cluster", "manages");
 
-    private static final Set<String> DEFAULT_RESOURCE_ENTITY_TYPES = Set.of(
-        "MicroService",
-        "Service",
-        "ServiceCluster",
-        "Cluster",
-        "ApplicationServiceCluster",
-        "MiddlewareCluster",
-        "Pod",
-        "K8sInstance",
-        "K8sCluster",
-        "WorkerNode",
-        "ComputeNode",
-        "Host",
-        "Container");
+    private static final Set<String> DEFAULT_RESOURCE_ENTITY_TYPES =
+        Set.of("MicroService", "Service", "ServiceCluster", "Cluster", "ApplicationServiceCluster", "MiddlewareCluster",
+            "Pod", "K8sInstance", "K8sCluster", "WorkerNode", "ComputeNode", "Host", "Container");
 
     private final OperationIntelligenceProperties properties;
 
@@ -95,22 +80,18 @@ public class CallChainResourceSubgraphService {
         if (matchResult.seedEntityIds().isEmpty()) {
             return new ResourceSubgraphResult(emptySnapshot(ontologyId, envCode), matchResult);
         }
-        GraphSnapshot subgraph = knowledgeGraphService.querySubgraph(
-            ontologyId,
-            envCode,
-            matchResult.seedEntityIds(),
-            properties.getKnowledgeGraph().getResourceSubgraphMaxHops(),
-            resolveRelationTypes());
+        GraphSnapshot subgraph = knowledgeGraphService.querySubgraph(ontologyId, envCode, matchResult.seedEntityIds(),
+            properties.getKnowledgeGraph().getResourceSubgraphMaxHops(), resolveRelationTypes());
         GraphSnapshot filtered = filterResourceSubgraph(subgraph, matchResult.seedEntityIds());
         return new ResourceSubgraphResult(filtered, matchResult);
     }
 
     private MatchResult matchCallChainEntities(GraphSnapshot envSnapshot, Collection<GraphEntity> callChainEntities) {
-        Map<String, GraphEntity> envEntitiesById = envSnapshot.getEntities().stream()
-            .collect(Collectors.toMap(GraphEntity::getId, entity -> entity, (left, right) -> left,
-                LinkedHashMap::new));
-        Map<String, List<GraphEntity>> entitiesByClusterId = buildEntityIndex(envSnapshot.getEntities(),
-            Set.of("clusterId", "clusterName", "neId"));
+        Map<String, GraphEntity> envEntitiesById = envSnapshot.getEntities()
+            .stream()
+            .collect(Collectors.toMap(GraphEntity::getId, entity -> entity, (left, right) -> left, LinkedHashMap::new));
+        Map<String, List<GraphEntity>> entitiesByClusterId =
+            buildEntityIndex(envSnapshot.getEntities(), Set.of("clusterId", "clusterName", "neId"));
         Map<String, List<GraphEntity>> entitiesByServiceName = buildEntityIndex(envSnapshot.getEntities(),
             Set.of("serviceName", "name", "displayName", "clusterName", "neName"));
 
@@ -140,9 +121,8 @@ public class CallChainResourceSubgraphService {
             if (!"Service".equals(entityType)) {
                 continue;
             }
-            Map<String, Object> propertiesMap = callChainEntity.getProperties() == null
-                ? Map.of()
-                : callChainEntity.getProperties();
+            Map<String, Object> propertiesMap =
+                callChainEntity.getProperties() == null ? Map.of() : callChainEntity.getProperties();
             Set<GraphEntity> matchedEntities = new LinkedHashSet<>();
             String clusterId = extractClusterId(propertiesMap);
             if (clusterId != null) {
@@ -151,8 +131,8 @@ public class CallChainResourceSubgraphService {
             String serviceName = stringValue(propertiesMap.get("serviceName"));
             if (serviceName != null) {
                 matchedEntities.addAll(entitiesByServiceName.getOrDefault(normalizeLookupKey(serviceName), List.of()));
-                matchedEntities.addAll(entitiesByServiceName.getOrDefault(normalizeLookupKey(shortName(serviceName)),
-                    List.of()));
+                matchedEntities
+                    .addAll(entitiesByServiceName.getOrDefault(normalizeLookupKey(shortName(serviceName)), List.of()));
             }
             if (matchedEntities.isEmpty()) {
                 unmatchedServices.add(serviceName == null ? callChainEntity.getName() : serviceName);
@@ -214,7 +194,8 @@ public class CallChainResourceSubgraphService {
 
     private GraphSnapshot filterResourceSubgraph(GraphSnapshot snapshot, Set<String> seedEntityIds) {
         Set<String> allowedTypes = resolveEntityTypes();
-        Set<String> selectedEntityIds = snapshot.getEntities().stream()
+        Set<String> selectedEntityIds = snapshot.getEntities()
+            .stream()
             .filter(entity -> allowedTypes.contains(entity.getType()) || seedEntityIds.contains(entity.getId()))
             .map(GraphEntity::getId)
             .collect(LinkedHashSet::new, Set::add, Set::addAll);
@@ -227,13 +208,15 @@ public class CallChainResourceSubgraphService {
         filtered.setSourceSystem(snapshot.getSourceSystem());
         filtered.setImportMode("UPSERT");
         filtered.setMetadata(snapshot.getMetadata());
-        filtered.setEntities(snapshot.getEntities().stream()
-            .filter(entity -> selectedEntityIds.contains(entity.getId()))
+        filtered.setEntities(
+            snapshot.getEntities().stream().filter(entity -> selectedEntityIds.contains(entity.getId())).toList());
+        filtered.setRelations(snapshot.getRelations()
+            .stream()
+            .filter(relation -> selectedEntityIds.contains(relation.getFrom())
+                && selectedEntityIds.contains(relation.getTo()))
             .toList());
-        filtered.setRelations(snapshot.getRelations().stream()
-            .filter(relation -> selectedEntityIds.contains(relation.getFrom()) && selectedEntityIds.contains(relation.getTo()))
-            .toList());
-        filtered.setObservations(snapshot.getObservations().stream()
+        filtered.setObservations(snapshot.getObservations()
+            .stream()
             .filter(observation -> selectedEntityIds.contains(observation.getEntityId()))
             .toList());
         return filtered;
@@ -254,7 +237,8 @@ public class CallChainResourceSubgraphService {
     }
 
     private Set<String> resolveRelationTypes() {
-        Set<String> relationTypes = new LinkedHashSet<>(properties.getKnowledgeGraph().getResourceSubgraphRelationTypes());
+        Set<String> relationTypes =
+            new LinkedHashSet<>(properties.getKnowledgeGraph().getResourceSubgraphRelationTypes());
         if (relationTypes.isEmpty()) {
             relationTypes.addAll(DEFAULT_RELATION_TYPES);
         }
@@ -271,11 +255,8 @@ public class CallChainResourceSubgraphService {
 
     private boolean isClusterLike(GraphEntity entity) {
         String type = entity.getType();
-        return "Cluster".equals(type)
-            || "ServiceCluster".equals(type)
-            || "ApplicationServiceCluster".equals(type)
-            || "MiddlewareCluster".equals(type)
-            || "K8sCluster".equals(type);
+        return "Cluster".equals(type) || "ServiceCluster".equals(type) || "ApplicationServiceCluster".equals(type)
+            || "MiddlewareCluster".equals(type) || "K8sCluster".equals(type);
     }
 
     private String stringValue(Object value) {
@@ -336,7 +317,7 @@ public class CallChainResourceSubgraphService {
      * Match result for call chain entities.
      */
     public record MatchResult(Set<String> seedEntityIds, Set<String> matchedServiceIds, Set<String> matchedClusterIds,
-                              Set<String> unmatchedServices) {
+        Set<String> unmatchedServices) {
         /**
          * Empty match result.
          *

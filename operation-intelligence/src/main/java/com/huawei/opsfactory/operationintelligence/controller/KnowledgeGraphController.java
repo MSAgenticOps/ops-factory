@@ -7,10 +7,9 @@ package com.huawei.opsfactory.operationintelligence.controller;
 import com.huawei.opsfactory.operationintelligence.controller.base.BaseKnowledgeGraphController;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.service.KnowledgeGraphService;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import org.apache.servicecomb.provider.rest.common.RestSchema;
 
 /**
  * Knowledge graph controller.

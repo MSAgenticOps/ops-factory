@@ -18,7 +18,8 @@ public final class PathValidator {
      */
     public static final Pattern SAFE_SEGMENT = Pattern.compile("[A-Za-z0-9_.-]+");
 
-    private PathValidator() {}
+    private PathValidator() {
+    }
 
     /**
      * Validates that a value is a safe path segment, throwing if it is not.

@@ -10,6 +10,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;

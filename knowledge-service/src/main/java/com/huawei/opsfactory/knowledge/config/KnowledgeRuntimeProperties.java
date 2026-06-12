@@ -8,6 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * The KnowledgeRuntimeProperties.
+ *
  * @author x00000000
  * @since 2026-05-26
  */

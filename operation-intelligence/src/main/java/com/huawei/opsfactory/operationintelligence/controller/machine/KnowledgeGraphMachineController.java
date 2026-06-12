@@ -10,6 +10,7 @@ import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphOnt
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphSnapshot;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.service.KnowledgeGraphService;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,8 +20,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import org.apache.servicecomb.provider.rest.common.RestSchema;
 
 import java.util.Map;
 
@@ -93,7 +92,8 @@ public class KnowledgeGraphMachineController extends BaseKnowledgeGraphControlle
     @Override
     @GetMapping("/environments")
     @BasicAuth
-    public Map<String, Object> listEnvironments(@RequestParam(value = "ontologyId", required = false) String ontologyId) {
+    public Map<String, Object>
+        listEnvironments(@RequestParam(value = "ontologyId", required = false) String ontologyId) {
         return super.listEnvironments(ontologyId);
     }
 

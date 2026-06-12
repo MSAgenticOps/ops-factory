@@ -13,17 +13,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.huawei.opsfactory.gateway.config.BaseControllerTestConfig;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
-import com.huawei.opsfactory.gateway.config.BaseControllerTestConfig;
 import com.huawei.opsfactory.gateway.process.PrewarmService;
 import com.huawei.opsfactory.gateway.service.SessionTraceService;
 import com.huawei.opsfactory.gateway.service.SessionTraceService.TraceJobSnapshot;
-
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -33,6 +29,10 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
  * Test coverage for Session Trace Controller.

@@ -6,8 +6,8 @@ package com.huawei.opsfactory.knowledge.api.profile;
 
 import com.huawei.opsfactory.knowledge.common.model.PageResponse;
 import com.huawei.opsfactory.knowledge.service.KnowledgeServiceFacade;
-import java.time.Instant;
-import java.util.Map;
+
+import org.apache.servicecomb.provider.rest.common.RestSchema;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -18,10 +18,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import org.apache.servicecomb.provider.rest.common.RestSchema;
+import java.time.Instant;
+import java.util.Map;
 
 /**
  * The ProfileController.
+ *
  * @author x00000000
  * @since 2026-05-26
  */
@@ -43,10 +45,8 @@ public class ProfileController {
     }
 
     @GetMapping("/index")
-    public PageResponse<ProfileSummary> listIndexProfiles(
-        @RequestParam(defaultValue = "1") int page,
-        @RequestParam(defaultValue = "20") int pageSize
-    ) {
+    public PageResponse<ProfileSummary> listIndexProfiles(@RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "20") int pageSize) {
         return facade.listIndexProfiles(page, pageSize);
     }
 
@@ -61,7 +61,8 @@ public class ProfileController {
     }
 
     @PatchMapping("/index/{profileId}")
-    public ProfileUpdateResponse updateIndexProfile(@PathVariable("profileId") String profileId, @RequestBody UpdateProfileRequest request) {
+    public ProfileUpdateResponse updateIndexProfile(@PathVariable("profileId") String profileId,
+        @RequestBody UpdateProfileRequest request) {
         return facade.updateIndexProfile(profileId, request);
     }
 
@@ -71,10 +72,8 @@ public class ProfileController {
     }
 
     @GetMapping("/retrieval")
-    public PageResponse<ProfileSummary> listRetrievalProfiles(
-        @RequestParam(defaultValue = "1") int page,
-        @RequestParam(defaultValue = "20") int pageSize
-    ) {
+    public PageResponse<ProfileSummary> listRetrievalProfiles(@RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "20") int pageSize) {
         return facade.listRetrievalProfiles(page, pageSize);
     }
 
@@ -89,7 +88,8 @@ public class ProfileController {
     }
 
     @PatchMapping("/retrieval/{profileId}")
-    public ProfileUpdateResponse updateRetrievalProfile(@PathVariable("profileId") String profileId, @RequestBody UpdateProfileRequest request) {
+    public ProfileUpdateResponse updateRetrievalProfile(@PathVariable("profileId") String profileId,
+        @RequestBody UpdateProfileRequest request) {
         return facade.updateRetrievalProfile(profileId, request);
     }
 
@@ -99,10 +99,8 @@ public class ProfileController {
     }
 
     @GetMapping("/bindings")
-    public PageResponse<BindingResponse> listBindings(
-        @RequestParam(defaultValue = "1") int page,
-        @RequestParam(defaultValue = "20") int pageSize
-    ) {
+    public PageResponse<BindingResponse> listBindings(@RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "20") int pageSize) {
         return facade.listBindings(page, pageSize);
     }
 
@@ -112,21 +110,13 @@ public class ProfileController {
     }
 
     @PatchMapping("/bindings/{sourceId}")
-    public BindingResponse updateBinding(@PathVariable("sourceId") String sourceId, @RequestBody BindingPatchRequest request) {
+    public BindingResponse updateBinding(@PathVariable("sourceId") String sourceId,
+        @RequestBody BindingPatchRequest request) {
         return facade.updateBinding(sourceId, request);
     }
 
-    public record ProfileSummary(
-        String id,
-        String name,
-        String scope,
-        boolean readonly,
-        String ownerSourceId,
-        String derivedFromProfileId,
-        Map<String, Object> summary,
-        Instant createdAt,
-        Instant updatedAt
-    ) {
+    public record ProfileSummary(String id, String name, String scope, boolean readonly, String ownerSourceId,
+        String derivedFromProfileId, Map<String, Object> summary, Instant createdAt, Instant updatedAt) {
     }
 
     public record CreateProfileRequest(String name, Map<String, Object> config) {
@@ -135,17 +125,8 @@ public class ProfileController {
     public record UpdateProfileRequest(String name, Map<String, Object> config) {
     }
 
-    public record ProfileDetail(
-        String id,
-        String name,
-        String scope,
-        boolean readonly,
-        String ownerSourceId,
-        String derivedFromProfileId,
-        Map<String, Object> config,
-        Instant createdAt,
-        Instant updatedAt
-    ) {
+    public record ProfileDetail(String id, String name, String scope, boolean readonly, String ownerSourceId,
+        String derivedFromProfileId, Map<String, Object> config, Instant createdAt, Instant updatedAt) {
     }
 
     public record ProfileUpdateResponse(String id, String name, Instant updatedAt) {
@@ -160,6 +141,7 @@ public class ProfileController {
     public record BindingPatchRequest(String indexProfileId, String retrievalProfileId) {
     }
 
-    public record BindingResponse(String sourceId, String indexProfileId, String retrievalProfileId, Instant updatedAt) {
+    public record BindingResponse(String sourceId, String indexProfileId, String retrievalProfileId,
+        Instant updatedAt) {
     }
 }

@@ -19,7 +19,8 @@ public final class JsonNodeHelper {
 
     private static final Logger log = LoggerFactory.getLogger(JsonNodeHelper.class);
 
-    private JsonNodeHelper() {}
+    private JsonNodeHelper() {
+    }
 
     /**
      * Extract text value from JSON node by field name.

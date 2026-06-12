@@ -4,10 +4,11 @@
 
 package com.huawei.opsfactory.knowledge.support;
 
-import java.util.ArrayList;
-import java.util.List;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * The TestLogAppender.
@@ -18,6 +19,7 @@ import ch.qos.logback.core.AppenderBase;
 public final class TestLogAppender extends AppenderBase<ILoggingEvent> implements AutoCloseable {
 
     private final ch.qos.logback.classic.Logger logger;
+
     private final List<ILoggingEvent> events = new ArrayList<>();
 
     private TestLogAppender(ch.qos.logback.classic.Logger logger) {
@@ -32,7 +34,8 @@ public final class TestLogAppender extends AppenderBase<ILoggingEvent> implement
     }
 
     public static TestLogAppender attachTo(String loggerName) {
-        ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(loggerName);
+        ch.qos.logback.classic.Logger logger =
+            (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(loggerName);
         return new TestLogAppender(logger);
     }
 
@@ -46,9 +49,7 @@ public final class TestLogAppender extends AppenderBase<ILoggingEvent> implement
     }
 
     public List<String> formattedMessages() {
-        return events.stream()
-            .map(event -> event.getFormattedMessage())
-            .toList();
+        return events.stream().map(event -> event.getFormattedMessage()).toList();
     }
 
     @Override

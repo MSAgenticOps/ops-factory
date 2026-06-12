@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.huawei.opsfactory.knowledge.config.KnowledgeProperties;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -43,7 +44,8 @@ class SystemControllerTest {
             .andExpect(jsonPath("$.ingest.maxFileSizeMb").value(100))
             .andExpect(jsonPath("$.ingest.deduplication").value("sha256"))
             .andExpect(jsonPath("$.ingest.allowedContentTypes").isArray())
-            .andExpect(jsonPath("$.ingest.allowedContentTypes").value(org.hamcrest.Matchers.hasItem("application/vnd.ms-htmlhelp")))
+            .andExpect(jsonPath("$.ingest.allowedContentTypes")
+                .value(org.hamcrest.Matchers.hasItem("application/vnd.ms-htmlhelp")))
             .andExpect(jsonPath("$.chunking.mode").value("hierarchical"))
             .andExpect(jsonPath("$.chunking.targetTokens").value(500))
             .andExpect(jsonPath("$.retrieval.mode").value("hybrid"))

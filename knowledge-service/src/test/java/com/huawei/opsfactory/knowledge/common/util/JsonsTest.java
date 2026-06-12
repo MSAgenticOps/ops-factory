@@ -8,10 +8,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.List;
-import java.util.Map;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.Map;
 
 class JsonsTest {
 
@@ -72,8 +74,7 @@ class JsonsTest {
 
     @Test
     void shouldThrowOnInvalidJsonForReadMap() {
-        assertThatThrownBy(() -> Jsons.readMap(objectMapper, "not json"))
-            .isInstanceOf(IllegalStateException.class)
+        assertThatThrownBy(() -> Jsons.readMap(objectMapper, "not json")).isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("Failed to deserialize json map");
     }
 

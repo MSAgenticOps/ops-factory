@@ -7,7 +7,6 @@ package com.huawei.opsfactory.gateway.controller;
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.common.util.FileUtil;
-import com.huawei.opsfactory.gateway.filter.RequestContextFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
 import com.huawei.opsfactory.gateway.proxy.GoosedProxy;

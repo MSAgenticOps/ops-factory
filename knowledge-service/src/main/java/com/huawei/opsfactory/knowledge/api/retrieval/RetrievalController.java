@@ -7,6 +7,7 @@ package com.huawei.opsfactory.knowledge.api.retrieval;
 import com.huawei.opsfactory.knowledge.controller.base.BaseRetrievalController;
 import com.huawei.opsfactory.knowledge.service.KnowledgeServiceFacade;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,10 +16,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import org.apache.servicecomb.provider.rest.common.RestSchema;
-
 /**
  * The RetrievalController.
+ *
  * @author x00000000
  * @since 2026-05-26
  */
@@ -50,13 +50,11 @@ public class RetrievalController extends BaseRetrievalController {
 
     @Override
     @GetMapping("/fetch/{chunkId}")
-    public FetchResponse fetch(
-        @PathVariable("chunkId") String chunkId,
+    public FetchResponse fetch(@PathVariable("chunkId") String chunkId,
         @RequestParam(defaultValue = "false") boolean includeNeighbors,
         @RequestParam(defaultValue = "1") int neighborWindow,
         @RequestParam(defaultValue = "true") boolean includeMarkdown,
-        @RequestParam(defaultValue = "true") boolean includeRawText
-    ) {
+        @RequestParam(defaultValue = "true") boolean includeRawText) {
         return facade.fetch(chunkId, includeNeighbors, neighborWindow);
     }
 

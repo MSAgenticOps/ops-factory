@@ -10,11 +10,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.huawei.opsfactory.knowledge.config.KnowledgeRuntimeProperties;
-import java.io.ByteArrayInputStream;
-import java.nio.file.Path;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import java.io.ByteArrayInputStream;
+import java.nio.file.Path;
 
 class StorageManagerTest {
 
@@ -33,7 +35,8 @@ class StorageManagerTest {
     @Test
     void shouldResolveOriginalFilePath() {
         Path path = storageManager.originalFilePath("src-1", "doc-1", "file.pdf");
-        assertThat(path).isEqualTo(tempDir.resolve("upload").resolve("src-1").resolve("doc-1").resolve("original").resolve("file.pdf"));
+        assertThat(path).isEqualTo(
+            tempDir.resolve("upload").resolve("src-1").resolve("doc-1").resolve("original").resolve("file.pdf"));
     }
 
     @Test
@@ -71,15 +74,14 @@ class StorageManagerTest {
     @Test
     void shouldThrowWhenReadingBytesOfNonExistentFile() {
         Path file = tempDir.resolve("missing.bin");
-        assertThatThrownBy(() -> storageManager.readBytes(file))
-            .isInstanceOf(IllegalStateException.class)
+        assertThatThrownBy(() -> storageManager.readBytes(file)).isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("Failed to read file");
     }
 
     @Test
     void shouldSaveAndReadBytes() {
         Path file = tempDir.resolve("data.bin");
-        byte[] data = new byte[]{1, 2, 3, 4, 5};
+        byte[] data = new byte[] {1, 2, 3, 4, 5};
         storageManager.save(new ByteArrayInputStream(data), file);
         assertThat(storageManager.readBytes(file)).isEqualTo(data);
     }

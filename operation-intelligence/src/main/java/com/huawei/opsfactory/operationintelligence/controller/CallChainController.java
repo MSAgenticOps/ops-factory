@@ -8,6 +8,7 @@ import com.huawei.opsfactory.operationintelligence.qos.model.CallChainTree;
 import com.huawei.opsfactory.operationintelligence.qos.model.QueryCallChainRequest;
 import com.huawei.opsfactory.operationintelligence.service.CallChainService;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -21,8 +22,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.apache.servicecomb.provider.rest.common.RestSchema;
 
 /**
  * Call Chain Controller.

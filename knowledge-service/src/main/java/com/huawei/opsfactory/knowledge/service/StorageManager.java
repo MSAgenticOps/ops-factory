@@ -5,17 +5,20 @@
 package com.huawei.opsfactory.knowledge.service;
 
 import com.huawei.opsfactory.knowledge.config.KnowledgeRuntimeProperties;
+
+import org.springframework.stereotype.Component;
+
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.stream.Stream;
-import org.springframework.stereotype.Component;
 
 /**
  * The StorageManager.
+ *
  * @author x00000000
  * @since 2026-05-26
  */
@@ -97,14 +100,13 @@ public class StorageManager {
                 return;
             }
             try (Stream<Path> walk = Files.walk(path)) {
-                walk.sorted(Comparator.reverseOrder())
-                    .forEach(current -> {
-                        try {
-                            Files.deleteIfExists(current);
-                        } catch (IOException e) {
-                            throw new IllegalStateException("Failed to delete " + current, e);
-                        }
-                    });
+                walk.sorted(Comparator.reverseOrder()).forEach(current -> {
+                    try {
+                        Files.deleteIfExists(current);
+                    } catch (IOException e) {
+                        throw new IllegalStateException("Failed to delete " + current, e);
+                    }
+                });
             }
         } catch (IOException e) {
             throw new IllegalStateException("Failed to delete path " + path, e);

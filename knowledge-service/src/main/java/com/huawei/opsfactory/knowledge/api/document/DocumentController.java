@@ -6,9 +6,10 @@ package com.huawei.opsfactory.knowledge.api.document;
 
 import com.huawei.opsfactory.knowledge.common.model.PageResponse;
 import com.huawei.opsfactory.knowledge.service.KnowledgeServiceFacade;
+
 import jakarta.validation.constraints.NotNull;
-import java.time.Instant;
-import java.util.List;
+
+import org.apache.servicecomb.provider.rest.common.RestSchema;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -18,17 +19,19 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import org.apache.servicecomb.provider.rest.common.RestSchema;
+import java.time.Instant;
+import java.util.List;
 
 /**
  * The DocumentController.
+ *
  * @author x00000000
  * @since 2026-05-26
  */
@@ -50,19 +53,14 @@ public class DocumentController {
     }
 
     @GetMapping("/documents")
-    public PageResponse<DocumentSummary> listDocuments(
-        @RequestParam(required = false) String sourceId,
-        @RequestParam(defaultValue = "1") int page,
-        @RequestParam(defaultValue = "20") int pageSize
-    ) {
+    public PageResponse<DocumentSummary> listDocuments(@RequestParam(required = false) String sourceId,
+        @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int pageSize) {
         return facade.listDocuments(page, pageSize, sourceId);
     }
 
     @PostMapping(value = "/sources/{sourceId}/documents:ingest", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public IngestDocumentsResponse ingestDocuments(
-        @PathVariable("sourceId") String sourceId,
-        @RequestPart("files") @NotNull MultipartFile[] files
-    ) {
+    public IngestDocumentsResponse ingestDocuments(@PathVariable("sourceId") String sourceId,
+        @RequestPart("files") @NotNull MultipartFile[] files) {
         return facade.ingest(sourceId, files);
     }
 
@@ -72,7 +70,8 @@ public class DocumentController {
     }
 
     @PatchMapping("/documents/{documentId}")
-    public DocumentUpdateResponse updateDocument(@PathVariable("documentId") String documentId, @RequestBody UpdateDocumentRequest request) {
+    public DocumentUpdateResponse updateDocument(@PathVariable("documentId") String documentId,
+        @RequestBody UpdateDocumentRequest request) {
         return facade.updateDocument(documentId, request);
     }
 
@@ -83,10 +82,8 @@ public class DocumentController {
 
     @GetMapping("/documents/{documentId}/chunks")
     public PageResponse<com.huawei.opsfactory.knowledge.api.chunk.ChunkController.ChunkSummary> listDocumentChunks(
-        @PathVariable("documentId") String documentId,
-        @RequestParam(defaultValue = "1") int page,
-        @RequestParam(defaultValue = "20") int pageSize
-    ) {
+        @PathVariable("documentId") String documentId, @RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "20") int pageSize) {
         return facade.listDocumentChunks(documentId, page, pageSize);
     }
 
@@ -112,8 +109,7 @@ public class DocumentController {
     @GetMapping("/documents/{documentId}/original")
     public ResponseEntity<ByteArrayResource> downloadOriginal(@PathVariable("documentId") String documentId) {
         OriginalDocumentResponse payload = facade.originalDocument(documentId);
-        String contentType = payload.contentType() != null && !payload.contentType().isBlank()
-            ? payload.contentType()
+        String contentType = payload.contentType() != null && !payload.contentType().isBlank() ? payload.contentType()
             : MediaType.APPLICATION_OCTET_STREAM_VALUE;
         return ResponseEntity.ok()
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + payload.filename() + "\"")
@@ -141,20 +137,9 @@ public class DocumentController {
         return facade.documentStats(documentId);
     }
 
-    public record DocumentSummary(
-        String id,
-        String sourceId,
-        String name,
-        String contentType,
-        String title,
-        String status,
-        String indexStatus,
-        long fileSizeBytes,
-        int chunkCount,
-        int userEditedChunkCount,
-        Instant createdAt,
-        Instant updatedAt
-    ) {
+    public record DocumentSummary(String id, String sourceId, String name, String contentType, String title,
+        String status, String indexStatus, long fileSizeBytes, int chunkCount, int userEditedChunkCount,
+        Instant createdAt, Instant updatedAt) {
     }
 
     /**
@@ -167,42 +152,17 @@ public class DocumentController {
     public record SkippedFileInfo(String fileName, String reason, String existingFileName) {
     }
 
-    public record IngestDocumentsResponse(
-        String jobId,
-        String sourceId,
-        String status,
-        int documentCount,
-        List<SkippedFileInfo> skipped
-    ) {
+    public record IngestDocumentsResponse(String jobId, String sourceId, String status, int documentCount,
+        List<SkippedFileInfo> skipped) {
     }
 
-    public record DocumentDetail(
-        String id,
-        String sourceId,
-        String name,
-        String originalFilename,
-        String title,
-        String description,
-        List<String> tags,
-        String sha256,
-        String contentType,
-        String language,
-        String status,
-        String indexStatus,
-        long fileSizeBytes,
-        int chunkCount,
-        int userEditedChunkCount,
-        String errorMessage,
-        Instant createdAt,
-        Instant updatedAt
-    ) {
+    public record DocumentDetail(String id, String sourceId, String name, String originalFilename, String title,
+        String description, List<String> tags, String sha256, String contentType, String language, String status,
+        String indexStatus, long fileSizeBytes, int chunkCount, int userEditedChunkCount, String errorMessage,
+        Instant createdAt, Instant updatedAt) {
     }
 
-    public record UpdateDocumentRequest(
-        String title,
-        String description,
-        List<String> tags
-    ) {
+    public record UpdateDocumentRequest(String title, String description, List<String> tags) {
     }
 
     public record DocumentUpdateResponse(String id, boolean updated, Instant updatedAt) {
@@ -223,13 +183,7 @@ public class DocumentController {
     public record JobCreationResponse(String jobId, String documentId, String jobType, String status) {
     }
 
-    public record DocumentStatsResponse(
-        String documentId,
-        int chunkCount,
-        int userEditedChunkCount,
-        Instant lastIndexedAt,
-        String status,
-        String indexStatus
-    ) {
+    public record DocumentStatsResponse(String documentId, int chunkCount, int userEditedChunkCount,
+        Instant lastIndexedAt, String status, String indexStatus) {
     }
 }

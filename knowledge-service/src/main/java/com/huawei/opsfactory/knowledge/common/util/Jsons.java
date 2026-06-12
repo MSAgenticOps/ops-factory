@@ -7,12 +7,14 @@ package com.huawei.opsfactory.knowledge.common.util;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 /**
  * The Jsons.
+ *
  * @author x00000000
  * @since 2026-05-26
  */
@@ -35,8 +37,7 @@ public final class Jsons {
             return Collections.emptyList();
         }
         try {
-            return objectMapper.readValue(value, new TypeReference<>() {
-            });
+            return objectMapper.readValue(value, new TypeReference<>() {});
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to deserialize json list", e);
         }
@@ -47,8 +48,7 @@ public final class Jsons {
             return Collections.emptyMap();
         }
         try {
-            return objectMapper.readValue(value, new TypeReference<>() {
-            });
+            return objectMapper.readValue(value, new TypeReference<>() {});
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to deserialize json map", e);
         }

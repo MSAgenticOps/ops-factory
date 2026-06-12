@@ -8,11 +8,11 @@ import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
 import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
-import com.huawei.opsfactory.gateway.service.proactive.ChannelTargetKey;
-import com.huawei.opsfactory.gateway.service.proactive.ProactiveContextInjector;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelBinding;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelReplyResult;
+import com.huawei.opsfactory.gateway.service.proactive.ChannelTargetKey;
+import com.huawei.opsfactory.gateway.service.proactive.ProactiveContextInjector;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;

@@ -8,6 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * The KnowledgeDatabaseProperties.
+ *
  * @author x00000000
  * @since 2026-05-26
  */
@@ -15,12 +16,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "knowledge.database")
 public class KnowledgeDatabaseProperties {
 
+    private final Pool pool = new Pool();
     private String type = "sqlite";
     private String url = "";
     private String driverClassName = "";
     private String username = "";
     private String password = "";
-    private final Pool pool = new Pool();
 
     public String getType() {
         return type;
@@ -68,6 +69,7 @@ public class KnowledgeDatabaseProperties {
 
     public static class Pool {
         private int maxSize = 5;
+
         private int minIdle = 1;
 
         public int getMaxSize() {

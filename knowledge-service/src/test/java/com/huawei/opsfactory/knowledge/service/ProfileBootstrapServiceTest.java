@@ -12,9 +12,11 @@ import static org.mockito.Mockito.when;
 
 import com.huawei.opsfactory.knowledge.config.KnowledgeProperties;
 import com.huawei.opsfactory.knowledge.repository.ProfileRepository;
+
+import org.junit.jupiter.api.Test;
+
 import java.time.Instant;
 import java.util.Optional;
-import org.junit.jupiter.api.Test;
 
 class ProfileBootstrapServiceTest {
 
@@ -29,8 +31,7 @@ class ProfileBootstrapServiceTest {
     @Test
     void shouldCreateDefaultIndexProfileWhenNotExists() {
         ProfileRepository repo = profileRepository();
-        when(repo.findIndexByName(ProfileBootstrapService.DEFAULT_INDEX_PROFILE_NAME))
-            .thenReturn(Optional.empty());
+        when(repo.findIndexByName(ProfileBootstrapService.DEFAULT_INDEX_PROFILE_NAME)).thenReturn(Optional.empty());
         when(repo.findRetrievalByName(ProfileBootstrapService.DEFAULT_RETRIEVAL_PROFILE_NAME))
             .thenReturn(Optional.empty());
 
@@ -42,8 +43,7 @@ class ProfileBootstrapServiceTest {
     @Test
     void shouldCreateDefaultRetrievalProfileWhenNotExists() {
         ProfileRepository repo = profileRepository();
-        when(repo.findIndexByName(ProfileBootstrapService.DEFAULT_INDEX_PROFILE_NAME))
-            .thenReturn(Optional.empty());
+        when(repo.findIndexByName(ProfileBootstrapService.DEFAULT_INDEX_PROFILE_NAME)).thenReturn(Optional.empty());
         when(repo.findRetrievalByName(ProfileBootstrapService.DEFAULT_RETRIEVAL_PROFILE_NAME))
             .thenReturn(Optional.empty());
 
@@ -55,11 +55,9 @@ class ProfileBootstrapServiceTest {
     @Test
     void shouldRefreshExistingIndexProfile() {
         ProfileRepository repo = profileRepository();
-        ProfileRepository.ProfileRecord existing = new ProfileRepository.ProfileRecord(
-            "ip-1", ProfileBootstrapService.DEFAULT_INDEX_PROFILE_NAME,
-            java.util.Map.of(), "index", null, true, null,
-            Instant.now(), Instant.now()
-        );
+        ProfileRepository.ProfileRecord existing =
+            new ProfileRepository.ProfileRecord("ip-1", ProfileBootstrapService.DEFAULT_INDEX_PROFILE_NAME,
+                java.util.Map.of(), "index", null, true, null, Instant.now(), Instant.now());
         when(repo.findIndexByName(ProfileBootstrapService.DEFAULT_INDEX_PROFILE_NAME))
             .thenReturn(Optional.of(existing));
         when(repo.findRetrievalByName(ProfileBootstrapService.DEFAULT_RETRIEVAL_PROFILE_NAME))
@@ -73,13 +71,10 @@ class ProfileBootstrapServiceTest {
     @Test
     void shouldRefreshExistingRetrievalProfile() {
         ProfileRepository repo = profileRepository();
-        ProfileRepository.ProfileRecord existing = new ProfileRepository.ProfileRecord(
-            "rp-1", ProfileBootstrapService.DEFAULT_RETRIEVAL_PROFILE_NAME,
-            java.util.Map.of(), "retrieval", null, true, null,
-            Instant.now(), Instant.now()
-        );
-        when(repo.findIndexByName(ProfileBootstrapService.DEFAULT_INDEX_PROFILE_NAME))
-            .thenReturn(Optional.empty());
+        ProfileRepository.ProfileRecord existing =
+            new ProfileRepository.ProfileRecord("rp-1", ProfileBootstrapService.DEFAULT_RETRIEVAL_PROFILE_NAME,
+                java.util.Map.of(), "retrieval", null, true, null, Instant.now(), Instant.now());
+        when(repo.findIndexByName(ProfileBootstrapService.DEFAULT_INDEX_PROFILE_NAME)).thenReturn(Optional.empty());
         when(repo.findRetrievalByName(ProfileBootstrapService.DEFAULT_RETRIEVAL_PROFILE_NAME))
             .thenReturn(Optional.of(existing));
 
@@ -91,19 +86,15 @@ class ProfileBootstrapServiceTest {
     @Test
     void shouldReturnDefaultIndexProfileId() {
         ProfileRepository repo = profileRepository();
-        when(repo.findIndexByName(ProfileBootstrapService.DEFAULT_INDEX_PROFILE_NAME))
-            .thenReturn(Optional.empty());
+        when(repo.findIndexByName(ProfileBootstrapService.DEFAULT_INDEX_PROFILE_NAME)).thenReturn(Optional.empty());
         when(repo.findRetrievalByName(ProfileBootstrapService.DEFAULT_RETRIEVAL_PROFILE_NAME))
             .thenReturn(Optional.empty());
 
         ProfileBootstrapService service = new ProfileBootstrapService(repo, properties());
 
-        when(repo.findIndexByName(ProfileBootstrapService.DEFAULT_INDEX_PROFILE_NAME))
-            .thenReturn(Optional.of(new ProfileRepository.ProfileRecord(
-                "ip-42", ProfileBootstrapService.DEFAULT_INDEX_PROFILE_NAME,
-                java.util.Map.of(), "index", null, true, null,
-                Instant.now(), Instant.now()
-            )));
+        when(repo.findIndexByName(ProfileBootstrapService.DEFAULT_INDEX_PROFILE_NAME)).thenReturn(
+            Optional.of(new ProfileRepository.ProfileRecord("ip-42", ProfileBootstrapService.DEFAULT_INDEX_PROFILE_NAME,
+                java.util.Map.of(), "index", null, true, null, Instant.now(), Instant.now())));
 
         assertThat(service.defaultIndexProfileId()).isEqualTo("ip-42");
     }
@@ -111,19 +102,15 @@ class ProfileBootstrapServiceTest {
     @Test
     void shouldReturnDefaultRetrievalProfileId() {
         ProfileRepository repo = profileRepository();
-        when(repo.findIndexByName(ProfileBootstrapService.DEFAULT_INDEX_PROFILE_NAME))
-            .thenReturn(Optional.empty());
+        when(repo.findIndexByName(ProfileBootstrapService.DEFAULT_INDEX_PROFILE_NAME)).thenReturn(Optional.empty());
         when(repo.findRetrievalByName(ProfileBootstrapService.DEFAULT_RETRIEVAL_PROFILE_NAME))
             .thenReturn(Optional.empty());
 
         ProfileBootstrapService service = new ProfileBootstrapService(repo, properties());
 
-        when(repo.findRetrievalByName(ProfileBootstrapService.DEFAULT_RETRIEVAL_PROFILE_NAME))
-            .thenReturn(Optional.of(new ProfileRepository.ProfileRecord(
-                "rp-99", ProfileBootstrapService.DEFAULT_RETRIEVAL_PROFILE_NAME,
-                java.util.Map.of(), "retrieval", null, true, null,
-                Instant.now(), Instant.now()
-            )));
+        when(repo.findRetrievalByName(ProfileBootstrapService.DEFAULT_RETRIEVAL_PROFILE_NAME)).thenReturn(Optional
+            .of(new ProfileRepository.ProfileRecord("rp-99", ProfileBootstrapService.DEFAULT_RETRIEVAL_PROFILE_NAME,
+                java.util.Map.of(), "retrieval", null, true, null, Instant.now(), Instant.now())));
 
         assertThat(service.defaultRetrievalProfileId()).isEqualTo("rp-99");
     }
@@ -131,8 +118,7 @@ class ProfileBootstrapServiceTest {
     @Test
     void shouldReturnAllowedContentTypesFromProperties() {
         ProfileRepository repo = profileRepository();
-        when(repo.findIndexByName(ProfileBootstrapService.DEFAULT_INDEX_PROFILE_NAME))
-            .thenReturn(Optional.empty());
+        when(repo.findIndexByName(ProfileBootstrapService.DEFAULT_INDEX_PROFILE_NAME)).thenReturn(Optional.empty());
         when(repo.findRetrievalByName(ProfileBootstrapService.DEFAULT_RETRIEVAL_PROFILE_NAME))
             .thenReturn(Optional.empty());
 
