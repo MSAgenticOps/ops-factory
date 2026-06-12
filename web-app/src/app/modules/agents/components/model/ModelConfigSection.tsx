@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '../../../../platform/ui/primitives/Button'
-import type { AgentConfig, AgentModelConfig, CreateProviderRequest, LlmProvider, UpdateProviderRequest } from '../../../../../types/agentConfig'
+import type { AgentConfig, AgentModelConfig, CreateProviderRequest, LlmProvider, SaveResult, UpdateProviderRequest } from '../../../../../types/agentConfig'
 import CreateProviderModal from './CreateProviderModal'
 import { formatProviderEngine } from './providerDisplay'
 import {
@@ -17,8 +17,8 @@ import {
 interface ModelConfigSectionProps {
     config: AgentConfig
     onSave: (updates: AgentModelConfig) => Promise<boolean>
-    onCreateProvider: (provider: CreateProviderRequest) => Promise<boolean>
-    onUpdateProvider: (providerName: string, provider: UpdateProviderRequest) => Promise<boolean>
+    onCreateProvider: (provider: CreateProviderRequest) => Promise<SaveResult>
+    onUpdateProvider: (providerName: string, provider: UpdateProviderRequest) => Promise<SaveResult>
 }
 
 const PARAM_FIELDS: Array<{ key: keyof AgentModelConfig; labelKey: string }> = [
@@ -186,7 +186,11 @@ export default function ModelConfigSection({ config, onSave, onCreateProvider, o
                                         <select
                                             className="form-input"
                                             value={form.GOOSE_CONTEXT_STRATEGY || ''}
-                                            onChange={event => setForm(current => ({ ...current, GOOSE_CONTEXT_STRATEGY: event.target.value }))}
+                                            onChange={event =>
+                                                setForm(current => ({
+                                                    ...current,
+                                                    GOOSE_CONTEXT_STRATEGY: event.target.value,
+                                                }))}
                                         >
                                             <option value="">{t('agentConfigure.selectContextStrategy')}</option>
                                             {VALID_CONTEXT_STRATEGIES.map(strategy => (
