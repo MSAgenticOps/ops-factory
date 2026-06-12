@@ -1,16 +1,17 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '../../../../platform/ui/primitives/Button'
-import type { CreateProviderRequest, LlmProvider, UpdateProviderRequest } from '../../../../../types/agentConfig'
+import type { CreateProviderRequest, LlmProvider, SaveResult, UpdateProviderRequest } from '../../../../../types/agentConfig'
 import { formatProviderEngine } from './providerDisplay'
 import { removeLeadingZeros, validateContextLimit } from '../../../../../utils/model-validation'
+import { localizeProviderBackendError } from '../../../../../utils/providerErrorLocalization'
 
 interface CreateProviderModalProps {
     mode: 'create' | 'edit'
     provider?: LlmProvider
     onClose: () => void
-    onCreate?: (provider: CreateProviderRequest) => Promise<boolean>
-    onUpdate?: (providerName: string, provider: UpdateProviderRequest) => Promise<boolean>
+    onCreate?: (provider: CreateProviderRequest) => Promise<SaveResult>
+    onUpdate?: (providerName: string, provider: UpdateProviderRequest) => Promise<SaveResult>
 }
 
 function firstModelName(provider?: LlmProvider): string {
@@ -102,17 +103,24 @@ export default function CreateProviderModal({ mode, provider, onClose, onCreate,
         }
         setIsSaving(true)
         const payload = buildProviderPayload()
-        const success = isEdit
-            ? Boolean(provider?.name && onUpdate && await onUpdate(provider.name, payload))
-            : Boolean(onCreate && await onCreate({
-                name: name.trim(),
-                display_name: displayName.trim() || name.trim(),
-                ...payload,
-            })
-        )
+        const result = isEdit
+            ? (provider?.name && onUpdate
+                ? await onUpdate(provider.name, payload)
+                : { success: false })
+            : (onCreate
+                ? await onCreate({
+                    name: name.trim(),
+                    display_name: displayName.trim() || name.trim(),
+                    ...payload,
+                })
+                : { success: false })
         setIsSaving(false)
-        if (success) {
+        if (result.success) {
             onClose()
+        } else {
+            setError(result.error
+                ? localizeProviderBackendError(result.error)
+                : t(isEdit ? 'agentConfigure.providerUpdateFailed' : 'agentConfigure.providerCreateFailed'))
         }
     }
 
@@ -159,7 +167,12 @@ export default function CreateProviderModal({ mode, provider, onClose, onCreate,
                         </label>
                         <label className="form-group agent-provider-form-wide">
                             <span className="form-label">{t('agentConfigure.baseUrl')} <span className="form-required">*</span></span>
-                            <input className="form-input" value={baseUrl} onChange={event => setBaseUrl(event.target.value)} placeholder={t('agentConfigure.baseUrlPlaceholder')} />
+                            <input
+                                className="form-input"
+                                value={baseUrl}
+                                onChange={event => setBaseUrl(event.target.value)}
+                                placeholder={t('agentConfigure.baseUrlPlaceholder')}
+                            />
                             {validationErrors.baseUrl && <span className="form-error">{validationErrors.baseUrl}</span>}
                         </label>
                         <label className="form-group">
@@ -180,7 +193,11 @@ export default function CreateProviderModal({ mode, provider, onClose, onCreate,
                         </label>
                         <label className="form-group agent-provider-form-wide">
                             <span className="form-label">{t('agentConfigure.providerDescription')}</span>
-                            <textarea className="form-input" value={description} onChange={event => setDescription(event.target.value)} />
+                            <textarea
+                                className="form-input"
+                                value={description}
+                                onChange={event => setDescription(event.target.value)}
+                            />
                         </label>
                     </div>
                 </div>

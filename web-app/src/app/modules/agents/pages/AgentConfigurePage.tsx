@@ -13,8 +13,9 @@ import SchedulesPanel from '../../../platform/scheduler/SchedulesPanel'
 import Button from '../../../platform/ui/primitives/Button'
 import PageBackLink from '../../../platform/ui/primitives/PageBackLink'
 import { useGoosed } from '../../../platform/providers/GoosedContext'
-import type { AgentModelConfig, CreateProviderRequest, UpdateProviderRequest } from '../../../../types/agentConfig'
+import type { AgentModelConfig, CreateProviderRequest, SaveResult, UpdateProviderRequest } from '../../../../types/agentConfig'
 import type { SkillEntry } from '../../../../types/skill'
+import { localizeProviderBackendError } from '../../../../utils/providerErrorLocalization'
 import '../styles/agents.css'
 
 type ConfigTab = 'basic' | 'model' | 'prompts' | 'mcp' | 'skills' | 'memory' | 'schedules'
@@ -112,29 +113,33 @@ export default function AgentConfigure() {
         return false
     }
 
-    const handleCreateProvider = async (provider: CreateProviderRequest) => {
-        if (!agentId) return false
+    const handleCreateProvider = async (provider: CreateProviderRequest): Promise<SaveResult> => {
+        if (!agentId) {
+            navigate('/agents')
+            return { success: false, error: 'Missing agent id' }
+        }
         const result = await createProvider(agentId, provider)
         if (result.success) {
             showToast('success', t('agentConfigure.providerCreated'))
-            await fetchConfig(agentId)
-            return true
+        } else {
+            showToast('error', result.error
+                ? localizeProviderBackendError(result.error)
+                : t('agentConfigure.providerCreateFailed'))
         }
-        showToast('error', result.error || t('agentConfigure.providerCreateFailed'))
-        return false
+        navigate('/agents')
+        return { success: result.success, error: result.error }
     }
 
-    const handleUpdateProvider = async (providerName: string, provider: UpdateProviderRequest) => {
-        if (!agentId) return false
+    const handleUpdateProvider = async (providerName: string, provider: UpdateProviderRequest): Promise<SaveResult> => {
+        if (!agentId) return { success: false, error: 'Missing agent id' }
         const result = await updateProvider(agentId, providerName, provider)
         if (result.success) {
             showToast('success', t('agentConfigure.providerUpdated'))
             applyRestartNotice(result)
             await fetchConfig(agentId)
-            return true
+            return { success: true }
         }
-        showToast('error', result.error || t('agentConfigure.providerUpdateFailed'))
-        return false
+        return { success: false, error: result.error }
     }
 
     const handleRestartInstances = async () => {

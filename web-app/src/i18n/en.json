@@ -1777,6 +1777,7 @@
     "providerValidation": "Enter a valid provider name and base URL.",
     "providerNameRequired": "Provider name is required.",
     "providerNameFormat": "Provider name can only contain letters, numbers, dots, underscores, and hyphens.",
+    "providerNameTooLong": "Provider name must not exceed {{max}} characters.",
     "baseUrlRequired": "Base URL is required.",
     "baseUrlFormat": "Base URL must start with http:// or https://.",
     "baseUrlPlaceholder": "https://api.example.com",

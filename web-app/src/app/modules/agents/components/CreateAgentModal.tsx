@@ -6,12 +6,14 @@ import { runtime, gatewayHeaders, slugify } from '../../../../config/runtime'
 
 const DEFAULT_LLM = { provider: 'openai', model: 'qwen/qwen3.5-35b-a3b' }
 
+type TranslateFn = (key: string, params?: Record<string, unknown>) => string
+
 /**
  * Map backend English error messages to localized i18n keys.
  * Backend returns English-only messages (e.g. "Agent with ID 'xxx' already exists"),
  * so we pattern-match them here and return a translation key instead.
  */
-function localizeBackendError(backendError: string, t: (key: string, params?: Record<string, unknown>) => string): string {
+function localizeBackendError(backendError: string, t: TranslateFn): string {
     if (/Agent with ID '.+?' already exists/i.test(backendError)) {
         return t('agents.createDuplicateId')
     }

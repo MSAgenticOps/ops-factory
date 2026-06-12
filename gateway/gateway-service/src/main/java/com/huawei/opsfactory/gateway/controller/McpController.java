@@ -16,6 +16,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.servicecomb.provider.rest.common.RestSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -43,6 +45,8 @@ import java.util.regex.Pattern;
 @RestSchema(schemaId = "mcpController")
 @RequestMapping("/api/gateway/agents/{agentId}/mcp")
 public class McpController {
+    private static final Logger log = LoggerFactory.getLogger(McpController.class);
+
     private static final String KNOWLEDGE_SERVICE_MCP = "knowledge-service";
 
     private static final String KNOWLEDGE_CLI_MCP = "knowledge-cli";
@@ -166,6 +170,8 @@ public class McpController {
             }
         } catch (IOException e) {
             // If we can't parse the existing config, proceed with creation and let goose handle it
+            log.warn("Failed to parse existing MCP config for duplicate check, allowing creation: {}",
+                e.getMessage());
         }
         return false;
     }

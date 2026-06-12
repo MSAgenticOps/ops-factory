@@ -1778,6 +1778,7 @@
     "providerValidation": "请填写有效的 Provider 名称和 Base URL。",
     "providerNameRequired": "Provider 名称不能为空。",
     "providerNameFormat": "Provider 名称只能包含字母、数字、点、下划线和连字符。",
+    "providerNameTooLong": "Provider 名称不能超过 {{max}} 个字符。",
     "baseUrlRequired": "Base URL 不能为空。",
     "baseUrlFormat": "Base URL 必须以 http:// 或 https:// 开头。",
     "baseUrlPlaceholder": "https://api.example.com",

@@ -80,6 +80,11 @@ export interface UpdateAgentConfigResponse {
     errors?: string[]
 }
 
+export interface SaveResult {
+    success: boolean
+    error?: string
+}
+
 export interface CreateProviderResponse extends UpdateAgentConfigResponse {
     provider?: LlmProvider
 }
