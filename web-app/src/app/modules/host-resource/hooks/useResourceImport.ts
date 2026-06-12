@@ -5,7 +5,7 @@ import { validateSheetStructure } from '../../../../utils/xlsxValidator'
 import { isValidIp } from '../../../../utils/ip-validation'
 import { validateAndSanitize, hasDangerousChars } from '../../../../utils/inputValidation'
 import { IMPORT_METADATA } from '../../../../utils/importExportMetadata'
-import type { HostGroup, Cluster, Host, HostCreateRequest, BusinessService, ClusterType, BusinessType, HostRelation, SolutionType } from '../../../../types/host'
+import type { HostGroup, Cluster, Host, HostCreateRequest, BusinessService, ClusterType, BusinessType, ClusterRelation, SolutionType } from '../../../../types/host'
 import type { SopCreateRequest } from '../../../../types/sop'
 import type { WhitelistCommand } from '../../../../types/commandWhitelist'
 
@@ -43,7 +43,7 @@ interface ImportDeps {
     fetchGroups: () => Promise<void>
     fetchAllClusters: () => Promise<void>
     fetchAllHosts: () => Promise<void>
-    fetchHostRelations: () => Promise<void>
+    fetchClusterRelations: () => Promise<void>
     fetchBusinessServices: () => Promise<void>
     fetchGraph: (clusterId?: string, groupId?: string) => Promise<void>
     fetchWhitelist: () => Promise<void>
@@ -53,7 +53,7 @@ interface ImportDeps {
     clusters: Cluster[]
     allHosts: Host[]
     businessServices: BusinessService[]
-    relations: HostRelation[]
+    clusterRelations: ClusterRelation[]
     clusterTypes: ClusterType[]
     businessTypes: BusinessType[]
     solutionTypes: SolutionType[]
@@ -63,7 +63,7 @@ interface ImportDeps {
     createCluster: (body: Partial<Cluster>) => Promise<Cluster>
     createHost: (body: HostCreateRequest) => Promise<Host>
     createBusinessService: (body: Partial<BusinessService>) => Promise<BusinessService>
-    createRelation: (body: Partial<HostRelation>) => Promise<unknown>
+    createClusterRelation: (body: Partial<ClusterRelation>) => Promise<unknown>
     createClusterType: (body: Partial<ClusterType>) => Promise<unknown>
     createBusinessType: (body: Partial<BusinessType>) => Promise<unknown>
     createSolutionType: (body: Partial<SolutionType>) => Promise<unknown>
@@ -128,7 +128,9 @@ export function useResourceImport(deps: ImportDeps) {
                 const businessTypeNameToId = new Map(deps.businessTypes.map(bt => [bt.name, bt.id]))
                 const hostNameToId = new Map(deps.allHosts.map(h => [h.name, h.id]))
                 const bsNameToId = new Map(deps.businessServices.map(bs => [bs.name, bs.id]))
-                const existingRelationKeys = new Set(deps.relations.map(r => `${r.sourceHostId}->${r.targetHostId}`))
+                const existingClusterRelationKeys = new Set(
+                    deps.clusterRelations.map(r => `${r.sourceType}:${r.sourceId}->${r.targetId}:${r.description || ''}`)
+                )
 
                 // Helper functions to get related group IDs in hierarchy
                 const getDescendantIds = (groupId: string, allGroups: HostGroup[]): Set<string> => {
@@ -889,28 +891,67 @@ export function useResourceImport(deps: ImportDeps) {
                             }
 
                             case 'Relations': {
-                                const sourceBsId = bsNameToId.get(row.sourceNode)
-                                const sourceHostId = hostNameToId.get(row.sourceNode)
-                                const destHostId = hostNameToId.get(row.destNode)
-                                if (!destHostId) {
-                                    errors.push({ row: i + 2, code: 'import.targetHostNotFound', params: { host: row.destNode } })
+                                // 1. 解析并校验 sourceNodeType
+                                const sourceTypeValue = row.sourceNodeType?.trim() || ''
+                                const normalizedSourceType = sourceTypeValue.toLowerCase().replace(/[-_\s]+/g, '-')
+                                let sourceType: 'cluster' | 'business-service' | undefined
+
+                                if (normalizedSourceType === 'cluster' || normalizedSourceType === '集群') {
+                                    sourceType = 'cluster'
+                                } else if (normalizedSourceType === 'business-service' || normalizedSourceType === 'businessservice' || normalizedSourceType === '业务服务') {
+                                    sourceType = 'business-service'
+                                } else {
+                                    errors.push({ row: i + 2, code: 'import.sourceNodeTypeInvalid', params: { value: sourceTypeValue } })
                                     continue
                                 }
-                                if (!sourceBsId && !sourceHostId) {
+
+                                // 2. 校验 destNodeType（必须为 Cluster）
+                                const destTypeValue = row.destNodeType?.trim() || ''
+                                const normalizedDestType = destTypeValue.toLowerCase().replace(/[-_\s]+/g, '-')
+                                if (normalizedDestType !== 'cluster' && normalizedDestType !== '集群') {
+                                    errors.push({ row: i + 2, code: 'import.destNodeTypeInvalid', params: { value: destTypeValue } })
+                                    continue
+                                }
+
+                                // 3. 根据 sourceType 查找 sourceId
+                                let sourceId: string | undefined
+                                if (sourceType === 'cluster') {
+                                    sourceId = clusterNameToId.get(row.sourceNode)
+                                } else if (sourceType === 'business-service') {
+                                    sourceId = bsNameToId.get(row.sourceNode)
+                                }
+
+                                if (!sourceId) {
                                     errors.push({ row: i + 2, code: 'import.sourceNodeNotFound', params: { node: row.sourceNode } })
                                     continue
                                 }
-                                const relationKey = `${sourceBsId || sourceHostId}->${destHostId}`
-                                if (existingRelationKeys.has(relationKey)) {
+
+                                // 4. destNode 必须是集群
+                                const destClusterId = clusterNameToId.get(row.destNode)
+                                if (!destClusterId) {
+                                    errors.push({ row: i + 2, code: 'import.targetClusterNotFound', params: { cluster: row.destNode } })
+                                    continue
+                                }
+
+                                // 5. description 长度校验
+                                if (row.description && String(row.description).length > 500) {
+                                    errors.push({ row: i + 2, code: 'import.descriptionTooLong', params: { length: String(row.description.length) } })
+                                    continue
+                                }
+
+                                // 6. 查重（允许同一 source/target 不同 description）
+                                const relationKey = `${sourceType}:${sourceId}->${destClusterId}:${row.description || ''}`
+                                if (existingClusterRelationKeys.has(relationKey)) {
                                     errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Relation', name: `${row.sourceNode} -> ${row.destNode}` } })
                                     continue
                                 }
-                                existingRelationKeys.add(relationKey)
-                                await deps.createRelation({
-                                    sourceHostId: sourceBsId || sourceHostId!,
-                                    targetHostId: destHostId,
+                                existingClusterRelationKeys.add(relationKey)
+
+                                await deps.createClusterRelation({
+                                    sourceType,
+                                    sourceId,
+                                    targetId: destClusterId,
                                     description: row.description || '',
-                                    sourceType: sourceBsId ? 'business-service' : 'host',
                                 })
                                 success++
                                 break
@@ -1071,7 +1112,7 @@ export function useResourceImport(deps: ImportDeps) {
                         deps.fetchGroups(),
                         deps.fetchAllClusters(),
                         deps.fetchAllHosts(),
-                        deps.fetchHostRelations(),
+                        deps.fetchClusterRelations(),
                         deps.fetchBusinessServices(),
                         deps.fetchGraph(),
                         deps.fetchWhitelist(),

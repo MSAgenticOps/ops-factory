@@ -81,15 +81,15 @@ public class ThreadController {
     public ResponseEntity<Map<String, Object>> listFollowups(@PathVariable("agentId") String agentId,
         FollowupQuery query, HttpServletRequest request) {
         String userId = currentUserId(request);
-        if (query.channelId() == null || query.channelId().isBlank()
-            || query.conversationId() == null || query.conversationId().isBlank()) {
+        if (query.getChannelId() == null || query.getChannelId().isBlank()
+            || query.getConversationId() == null || query.getConversationId().isBlank()) {
             // channelId + conversationId are required to locate a thread (previously enforced by @RequestParam).
             return ResponseEntity.badRequest().body(Map.of("error", "channelId and conversationId are required"));
         }
-        String channelId = query.channelId();
-        String effectiveAccount = query.accountId() == null || query.accountId().isBlank()
-            ? DEFAULT_ACCOUNT_ID : query.accountId();
-        int effectiveLimit = clampLimit(query.limit());
+        String channelId = query.getChannelId();
+        String effectiveAccount = query.getAccountId() == null || query.getAccountId().isBlank()
+            ? DEFAULT_ACCOUNT_ID : query.getAccountId();
+        int effectiveLimit = clampLimit(query.getLimit());
         ChannelDetail channel;
         try {
             channel = channelConfigService.getChannel(channelId, userId);
@@ -106,8 +106,8 @@ public class ThreadController {
             log.warn("Thread followups: unknown channel {} for {}:{}", channelId, agentId, userId);
             return ResponseEntity.badRequest().body(Map.of("error", "unknown or invalid channel"));
         }
-        String targetKey = ChannelTargetKey.of(channel.type(), channelId, effectiveAccount, query.conversationId(),
-            query.threadId());
+        String targetKey = ChannelTargetKey.of(channel.type(), channelId, effectiveAccount, query.getConversationId(),
+            query.getThreadId());
         List<ProactiveFollowupRecord> followups =
             followupService.recentByTargetKey(userId, agentId, targetKey, effectiveLimit);
         log.info("Thread followups: {} record(s) on channel {} for {}:{}", followups.size(), channelId, agentId,
@@ -137,7 +137,125 @@ public class ThreadController {
      * @param threadId thread identifier (binding coordinate), or empty for a direct conversation
      * @param limit maximum records to return (defaults to 50, capped at 200)
      */
-    public record FollowupQuery(String channelId, String conversationId, String accountId, String threadId,
-        Integer limit) {
+    public static class FollowupQuery {
+        private String channelId;
+        private String conversationId;
+        private String accountId;
+        private String threadId;
+        private Integer limit;
+
+        /**
+         * Default no-args constructor.
+         */
+        public FollowupQuery() {
+        }
+
+        /**
+         * All-args constructor.
+         *
+         * @param channelId channel identifier
+         * @param conversationId conversation identifier
+         * @param accountId account identifier
+         * @param threadId thread identifier
+         * @param limit maximum records to return
+         */
+        public FollowupQuery(String channelId, String conversationId, String accountId, String threadId,
+            Integer limit) {
+            this.channelId = channelId;
+            this.conversationId = conversationId;
+            this.accountId = accountId;
+            this.threadId = threadId;
+            this.limit = limit;
+        }
+
+        /**
+         * Returns the channel identifier.
+         *
+         * @return channel identifier
+         */
+        public String getChannelId() {
+            return channelId;
+        }
+
+        /**
+         * Sets the channel identifier.
+         *
+         * @param channelId channel identifier
+         */
+        public void setChannelId(String channelId) {
+            this.channelId = channelId;
+        }
+
+        /**
+         * Returns the conversation identifier.
+         *
+         * @return conversation identifier
+         */
+        public String getConversationId() {
+            return conversationId;
+        }
+
+        /**
+         * Sets the conversation identifier.
+         *
+         * @param conversationId conversation identifier
+         */
+        public void setConversationId(String conversationId) {
+            this.conversationId = conversationId;
+        }
+
+        /**
+         * Returns the account identifier.
+         *
+         * @return account identifier
+         */
+        public String getAccountId() {
+            return accountId;
+        }
+
+        /**
+         * Sets the account identifier.
+         *
+         * @param accountId account identifier
+         */
+        public void setAccountId(String accountId) {
+            this.accountId = accountId;
+        }
+
+        /**
+         * Returns the thread identifier.
+         *
+         * @return thread identifier
+         */
+        public String getThreadId() {
+            return threadId;
+        }
+
+        /**
+         * Sets the thread identifier.
+         *
+         * @param threadId thread identifier
+         */
+        public void setThreadId(String threadId) {
+            this.threadId = threadId;
+        }
+
+        /**
+         * Returns the maximum number of records to return.
+         *
+         * @return maximum records to return
+         */
+        public Integer getLimit() {
+            return limit;
+        }
+
+        /**
+         * Sets the maximum number of records to return.
+         *
+         * @param limit maximum records to return
+         */
+        public void setLimit(Integer limit) {
+            this.limit = limit;
+        }
     }
 }

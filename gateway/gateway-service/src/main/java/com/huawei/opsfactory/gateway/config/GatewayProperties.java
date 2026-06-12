@@ -25,7 +25,7 @@ public class GatewayProperties {
 
     private static final String CONFIG_PATH_KEY = "GATEWAY_CONFIG_PATH";
 
-    private String secretKey = "test";
+    private String secretKey = "";
 
     private String corsOrigin = "http://127.0.0.1:5173";
 
@@ -51,7 +51,7 @@ public class GatewayProperties {
 
     private Logging logging = new Logging();
 
-    private String credentialEncryptionKey = "changeit-changeit-changeit-32";
+    private String credentialEncryptionKey = "";
 
     private RemoteExecution remoteExecution = new RemoteExecution();
 

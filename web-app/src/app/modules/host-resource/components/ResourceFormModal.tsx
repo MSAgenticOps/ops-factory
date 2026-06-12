@@ -799,7 +799,7 @@ export default function ResourceFormModal({
                                                             <>
                                                                 <span style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>{arrow}</span>
                                                                 <span style={{ flex: 1 }}>{getEntityName(peerId, resolvedPeerType)}</span>
-                                                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{rel.description}</span>
+                                                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', maxWidth: 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={rel.description || ''}>{rel.description}</span>
                                                                 <button className="hr-tree-node-action" title={t('common.edit')}
                                                                     onClick={() => { setEditingRelId(rel.id); setEditRelTargetId(rel.targetId); setEditRelDesc(rel.description) }}>
                                                                     ✎
@@ -944,7 +944,7 @@ export default function ResourceFormModal({
                                                             <>
                                                                 <span style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>→</span>
                                                                 <span style={{ flex: 1 }}>{getEntityName(rel.targetId, 'cluster')}</span>
-                                                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{rel.description}</span>
+                                                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', maxWidth: 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={rel.description || ''}>{rel.description}</span>
                                                                 <button className="hr-tree-node-action" title={t('common.edit')}
                                                                     onClick={() => { setEditingRelId(rel.id); setEditRelTargetId(rel.targetId); setEditRelDesc(rel.description) }}>
                                                                     ✎

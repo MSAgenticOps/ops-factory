@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
@@ -167,15 +168,24 @@ public class ClusterRelationService extends JsonFileEntityStore {
      * Creates a new cluster relation from the provided field map.
      *
      * @param body request body
-     * @return the result
+     * @return the created relation
+     * @throws BadRequestException if the request body is invalid
+     * @throws NotFoundException if the source or target entity is not found
      */
     public Map<String, Object> createRelation(Map<String, Object> body) throws BadRequestException, NotFoundException {
         String sourceType = (String) body.getOrDefault("sourceType", "cluster");
+        if (!"cluster".equals(sourceType) && !"business-service".equals(sourceType)) {
+            throw new BadRequestException("Invalid sourceType. Supported values: cluster, business-service");
+        }
         String sourceId = (String) body.get("sourceId");
         String targetId = (String) body.get("targetId");
         validateRelationBody(sourceId, targetId);
         validateRelationSource(sourceType, sourceId);
         validateRelationTarget(targetId);
+        Object descriptionObj = body.get("description");
+        if (descriptionObj != null) {
+            ValidationUtils.requireMaxLength(descriptionObj.toString(), 500, "Description");
+        }
         Map<String, Object> relation = buildRelationEntity(body, sourceType, sourceId, targetId);
         String id = (String) relation.get("id");
         writeEntityFile(id, relation);
@@ -188,9 +198,11 @@ public class ClusterRelationService extends JsonFileEntityStore {
     /**
      * Updates an existing cluster relation with the provided field map.
      *
-     * @param id an existing cluster relation with the provided field map
-     * @param body an existing cluster relation with the provided field map
-     * @return the result
+     * @param id relation identifier
+     * @param body request body
+     * @return the updated relation
+     * @throws BadRequestException if the request body is invalid
+     * @throws NotFoundException if the relation is not found
      */
     public Map<String, Object> updateRelation(String id, Map<String, Object> body) throws BadRequestException, NotFoundException {
         Path file = resolveEntityFile(id);
@@ -202,7 +214,11 @@ public class ClusterRelationService extends JsonFileEntityStore {
         String currentSourceType = (String) relation.getOrDefault("sourceType", "cluster");
 
         if (body.containsKey("description")) {
-            relation.put("description", body.get("description"));
+            Object descObj = body.get("description");
+            if (descObj != null) {
+                ValidationUtils.requireMaxLength(descObj.toString(), 500, "Description");
+            }
+            relation.put("description", descObj);
         }
         if (body.containsKey("sourceId")) {
             String sourceId = (String) body.get("sourceId");
