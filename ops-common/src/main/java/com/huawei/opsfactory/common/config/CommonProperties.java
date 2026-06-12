@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.common.config;
 
 import lombok.Getter;
@@ -23,6 +27,6 @@ public class CommonProperties {
 
     @Override
     public String toString() {
-        return "CommonProperties{userName= '" + userName + "', password= '******'}";
+        return "CommonProperties{userName='" + userName + "', password='******'}";
     }
 }

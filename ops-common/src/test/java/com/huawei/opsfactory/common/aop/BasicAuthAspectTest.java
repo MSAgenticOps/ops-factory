@@ -53,7 +53,7 @@ class BasicAuthAspectTest {
     /**
      * Sets up test fixtures before each test.
      *
-     * @throws Throwable if setup fails
+     * @throws Throwable if an error occurs during test execution
      */
     @BeforeEach
     void setUp() throws Throwable {
@@ -118,6 +118,7 @@ class BasicAuthAspectTest {
 
     /**
      * Test authentication failure with invalid credentials.
+     * AuthException is thrown when credentials are invalid.
      */
     @Test
     void testBasicAuthFailureInvalidCredentials() {
@@ -152,6 +153,7 @@ class BasicAuthAspectTest {
 
     /**
      * Test authentication failure with malformed Base64.
+     * AuthException is thrown when Base64 decoding fails.
      */
     @Test
     void testBasicAuthFailureMalformedBase64() {
@@ -162,6 +164,7 @@ class BasicAuthAspectTest {
 
     /**
      * Test authentication failure with malformed credentials format.
+     * AuthException is thrown when credentials format is invalid.
      */
     @Test
     void testBasicAuthFailureMalformedCredentials() {
@@ -174,6 +177,7 @@ class BasicAuthAspectTest {
 
     /**
      * Test authentication failure with missing Authorization header.
+     * AuthException is thrown when Authorization header is missing.
      */
     @Test
     void testBasicAuthFailureMissingAuthorization() {
@@ -185,6 +189,7 @@ class BasicAuthAspectTest {
 
     /**
      * Test authentication failure with empty Authorization header.
+     * AuthException is thrown when Authorization header is empty.
      */
     @Test
     void testBasicAuthFailureEmptyAuthorization() {
@@ -196,6 +201,7 @@ class BasicAuthAspectTest {
 
     /**
      * Test authentication with wrong username.
+     * AuthException is thrown when username is incorrect.
      */
     @Test
     void testBasicAuthFailureWrongUsername() {
@@ -209,6 +215,7 @@ class BasicAuthAspectTest {
 
     /**
      * Test authentication with wrong password.
+     * AuthException is thrown when password is incorrect.
      */
     @Test
     void testBasicAuthFailureWrongPassword() {
