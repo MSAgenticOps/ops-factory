@@ -11,6 +11,7 @@ import platform
 import math
 from typing import Dict, Tuple, Optional
 
+import matplotlib.font_manager as fm
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 # =============================================================================
@@ -23,8 +24,6 @@ def _detect_cjk_font() -> str:
     Uses platform detection with fallback chain.  Fonts are checked against
     matplotlib's font_manager so we only return names matplotlib can resolve.
     """
-    import matplotlib.font_manager as fm
-
     system = platform.system()
     if system == "Darwin":
         candidates = ["Hiragino Sans GB", "Heiti TC", "Arial Unicode MS", "PingFang SC"]

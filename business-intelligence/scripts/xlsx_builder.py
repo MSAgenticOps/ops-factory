@@ -233,7 +233,7 @@ class BiChartRenderer:
         renderer = getattr(self, method_name, self.render_bar)
         try:
             return renderer(chart_data)
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError, KeyError, IndexError) as e:
             logger.warning("Chart render failed for type=%s title=%s: %s", chart_type, chart_data.get("title"), e)
             return None
 
@@ -1427,7 +1427,7 @@ class BiXlsxBuilder:
                     self._build_sla_sheet(ws, tab_data)
                 else:
                     self._build_generic_sheet(ws, tab_data)
-            except Exception as e:
+            except (AttributeError, TypeError, ValueError, KeyError, IndexError) as e:
                 logger.error("Failed to build sheet '%s': %s", names[i], e)
                 ws.cell(row=1, column=1, value=f"Error building sheet: {e}")
 

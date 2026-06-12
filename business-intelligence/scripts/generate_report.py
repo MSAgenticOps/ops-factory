@@ -12,10 +12,13 @@ Usage:
 import argparse
 import concurrent.futures
 import copy
+import json
 import logging
 import sys
 from pathlib import Path
 from typing import Optional, Tuple
+
+import requests
 
 SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))
@@ -91,7 +94,7 @@ def main():
         adapter = BiDataAdapter(overview)
         all_tabs_raw = adapter.get_all_tabs()
         print(f"    ✓ Fetched {len(all_tabs_raw)} tabs")
-    except Exception as e:
+    except (requests.RequestException, json.JSONDecodeError, OSError) as e:
         print(f"    ❌ Failed to fetch data: {e}")
         logger.exception("Failed to fetch BI data")
         sys.exit(1)
@@ -119,7 +122,7 @@ def main():
             builder = BiXlsxBuilder(snapshot_data=all_tabs, language=language, period_label=period_label)
             filepath = builder.save(output_dir=output_dir)
             return language, filepath, None
-        except Exception as exc:
+        except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
             return language, None, exc
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(languages), 4)) as executor:

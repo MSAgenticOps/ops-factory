@@ -227,8 +227,9 @@ def _handle_get_all_metrics(args: Dict[str, Any], config: RuntimeConfig) -> Any:
             result[domain] = _extract_kpi_summary(domain, raw)
             if domain == "executive":
                 exec_raw = raw
-        except Exception as e:
+        except (ToolExecutionError, json.JSONDecodeError) as e:
             failed_domains.append(domain)
+            LOGGER.error("Failed to fetch metrics", domain=domain, error=str(e))
             result[domain] = {"error": f"Failed to fetch {domain} metrics: {e}"}
     # Inject data date range from executive monthlyTrend
     if exec_raw:
@@ -1149,7 +1150,7 @@ def handle_request(message: Dict[str, Any], config: RuntimeConfig) -> Optional[D
         except ToolExecutionError as exc:
             LOGGER.error("Tool execution failed", tool=name, error=exc.internal_message)
             return make_success_response(request_id, format_tool_result(exc.public_message, is_error=True))
-        except Exception as exc:
+        except (TypeError, ValueError, AttributeError, IndexError) as exc:
             LOGGER.exception("Unhandled tool execution error", tool=name)
             return make_success_response(request_id, format_tool_result(f"Unhandled server error: {exc}", is_error=True))
 

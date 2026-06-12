@@ -836,7 +836,8 @@ public class BusinessIntelligenceMetricsService {
                 related.add(new RelatedTicket(c.get(BiColumns.CHANGE_NUMBER), "changes", "same_ci", "high"));
             }
             if (beginDate != null) {
-                LocalDateTime actualEnd = BiDateUtils.parseDate(c.get(BiColumns.ACTUAL_END));                if (actualEnd != null && Math.abs(ChronoUnit.SECONDS.between(beginDate, actualEnd)) < 48 * 3600) {
+                LocalDateTime actualEnd = BiDateUtils.parseDate(c.get(BiColumns.ACTUAL_END));
+                if (actualEnd != null && Math.abs(ChronoUnit.SECONDS.between(beginDate, actualEnd)) < 48 * 3600) {
                     related.add(new RelatedTicket(c.get(BiColumns.CHANGE_NUMBER), "changes", "time_window_48h", "medium"));
                 }
             }

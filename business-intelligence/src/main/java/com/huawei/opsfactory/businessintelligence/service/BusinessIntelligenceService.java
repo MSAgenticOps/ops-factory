@@ -592,7 +592,6 @@ public class BusinessIntelligenceService {
 
     private TabContent buildIncidentAnalysis(BiRawData rawData, String startDate, String endDate, String granularity) {
         var m = metricsService.getIncidentMetrics(rawData);
-        List<BusinessIntelligenceMetricsService.IncidentSlaRecord> slaRecords = metricsService.buildIncidentSlaRecords(rawData);
         List<Map<String, String>> incidents = rawData.incidents();
 
         List<ChartDatum> volumeTrend = buildVolumeTrend(rawData, startDate, endDate, granularity);
@@ -1505,13 +1504,6 @@ public class BusinessIntelligenceService {
         if (score >= threshold) return "success";
         if (score >= threshold * 0.7) return "warning";
         return "danger";
-    }
-
-    private double parseDurationMinutes(String startStr, String endStr) {
-        LocalDateTime start = BiDateUtils.parseDate(startStr);
-        LocalDateTime end = BiDateUtils.parseDate(endStr);
-        if (start == null || end == null || !end.isAfter(start)) return 0;
-        return java.time.Duration.between(start, end).toMinutes();
     }
 
     // ── Workforce chart builders ───────────────────────────────────────

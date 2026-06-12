@@ -8,7 +8,6 @@ Usage:
     tab = client.get_tab("incident-analysis")
 """
 
-import json
 import logging
 import re
 from typing import Any, Dict, List, Optional
@@ -22,6 +21,10 @@ logger = logging.getLogger(__name__)
 def _t(text_en: str, text_zh: str, language: str) -> str:
     """Return localized string."""
     return text_zh if language == "zh" else text_en
+
+
+# ── Regex to detect Chinese characters (CJK + Extension A) ─────────────────────
+_CHINESE_RE = re.compile(r'[一-鿿㐀-䶿]')
 
 
 # ── Comprehensive Chinese → English localization map ──────────────────────────
@@ -70,7 +73,6 @@ _ZH_TO_EN: Dict[str, str] = {
     "事件 SLA 达成率": "Incident SLA Rate",
     "MTTR": "MTTR",
     "变更成功率": "Change Success Rate",
-    "变更致事件率": "Change-to-Incident Rate",
     "请求满意度": "Request Satisfaction",
     "问题关闭率": "Problem Closure Rate",
 
@@ -103,7 +105,6 @@ _ZH_TO_EN: Dict[str, str] = {
     # ── Request cards ──
     "请求总数": "Total Requests",
     "已完成请求": "Fulfilled Requests",
-    "SLA 达成率": "SLA Compliance",
     "平均满意度": "Avg Satisfaction",
 
     # ── Problem cards ──
@@ -122,7 +123,6 @@ _ZH_TO_EN: Dict[str, str] = {
     "人均处理量": "Avg Throughput",
     "积压工单数": "Backlog Tickets",
     "平均交付耗时": "Avg Delivery Time",
-    "SLA达标率": "SLA Compliance",
     "变更实施速度": "Change Speed",
     "一次性成功率": "First-Time Success",
     "用户满意度": "User Satisfaction",
@@ -173,7 +173,6 @@ _ZH_TO_EN: Dict[str, str] = {
     "SLA达成率(%)": "SLA Compliance (%)",
     "平均MTTR": "Avg MTTR",
     "变更数量": "Changes",
-    "成功率": "Success Rate",
     "引发事件变更": "Change-Induced Incidents",
     "成功": "Successful",
     "失败": "Failed",
@@ -197,7 +196,6 @@ _ZH_TO_EN: Dict[str, str] = {
     "变更": "Changes",
     "请求": "Requests",
     "问题": "Problems",
-    "平均满意度": "Avg Satisfaction",
 
     # ── Table titles ──
     "违约样本": "Breach Samples",
@@ -225,10 +223,8 @@ _ZH_TO_EN: Dict[str, str] = {
     "违约类型": "Breach Type",
     "服务目录": "Service Catalog",
     "请求部门": "Department",
-    "满意度": "Satisfaction",
     "时长": "Duration",
     "SLA": "SLA",
-    "事件数": "Incidents",
     "状态": "Status",
     "关闭方式": "Close Method",
     "是否回退": "Rolled Back",
@@ -260,7 +256,6 @@ _ZH_TO_EN: Dict[str, str] = {
     "回退率": "Rollback Rate",
     "致事件率": "Incident Rate",
     "工单号": "Ticket ID",
-    "分类": "Classification",
 }
 
 
@@ -276,7 +271,7 @@ def _localize(text: str, language: str) -> str:
     if translated is not None:
         return translated
     # Only log for Chinese-looking strings to avoid noisy warnings for already-English text.
-    if re.search(r'[一-鿿㐀-䶿]', text):
+    if _CHINESE_RE.search(text):
         logger.warning("Untranslated Chinese label in EN export: %r", text)
     return text
 
@@ -303,7 +298,7 @@ class BiApiClient:
         except requests.HTTPError as e:
             logger.error("HTTP error %s for %s: %s", e.response.status_code, url, e.response.text[:200])
             raise
-        except Exception as e:
+        except (requests.RequestException, ValueError) as e:
             logger.error("Unexpected error fetching %s: %s", url, e)
             raise
 
