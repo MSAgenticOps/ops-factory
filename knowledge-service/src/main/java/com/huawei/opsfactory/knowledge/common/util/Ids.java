@@ -8,6 +8,7 @@ import java.util.UUID;
 
 /**
  * The Ids.
+ *
  * @author x00000000
  * @since 2026-05-26
  */

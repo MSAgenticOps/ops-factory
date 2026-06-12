@@ -4,9 +4,9 @@
 
 package com.huawei.opsfactory.operationintelligence.callchainsubgraph.service;
 
+import com.huawei.opsfactory.operationintelligence.callchainsubgraph.model.CallChainSubgraphHistoryItem;
 import com.huawei.opsfactory.operationintelligence.callchainsubgraph.model.CallChainSubgraphRequest;
 import com.huawei.opsfactory.operationintelligence.callchainsubgraph.model.CallChainSubgraphResult;
-import com.huawei.opsfactory.operationintelligence.callchainsubgraph.model.CallChainSubgraphHistoryItem;
 import com.huawei.opsfactory.operationintelligence.callchainsubgraph.store.CallChainSubgraphStore;
 import com.huawei.opsfactory.operationintelligence.common.util.ServiceValidator;
 import com.huawei.opsfactory.operationintelligence.config.OperationIntelligenceProperties;
@@ -16,9 +16,9 @@ import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphRel
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphSnapshot;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.service.GraphSchemaRegistry;
 import com.huawei.opsfactory.operationintelligence.qos.model.CallChainTree;
-import com.huawei.opsfactory.operationintelligence.qos.model.QueryCallChainRequest;
 import com.huawei.opsfactory.operationintelligence.qos.model.CallFlow;
 import com.huawei.opsfactory.operationintelligence.qos.model.FlowNode;
+import com.huawei.opsfactory.operationintelligence.qos.model.QueryCallChainRequest;
 import com.huawei.opsfactory.operationintelligence.service.CallChainService;
 
 import org.springframework.http.HttpStatus;
@@ -111,9 +111,9 @@ public class CallChainSubgraphService {
         OffsetDateTime generatedAt = OffsetDateTime.now();
         String subgraphId = "cc-subgraph-" + UUID.randomUUID().toString().replace("-", "");
         GraphSnapshot callChainGraph = buildGraphSnapshot(request, callChainTree, subgraphId, generatedAt, queryMode);
-        CallChainResourceSubgraphService.ResourceSubgraphResult resourceSubgraphResult = resourceSubgraphService
-            .buildResourceSubgraph(resolveOntologyId(request.getOntologyId()), request.getEnvCode().trim(),
-                callChainGraph.getEntities());
+        CallChainResourceSubgraphService.ResourceSubgraphResult resourceSubgraphResult =
+            resourceSubgraphService.buildResourceSubgraph(resolveOntologyId(request.getOntologyId()),
+                request.getEnvCode().trim(), callChainGraph.getEntities());
         GraphSnapshot graph = mergeSnapshots(callChainGraph, resourceSubgraphResult.graph(), subgraphId, generatedAt);
         CallChainSubgraphResult result = new CallChainSubgraphResult();
         result.setSubgraphId(subgraphId);
@@ -123,8 +123,8 @@ public class CallChainSubgraphService {
         result.setSolutionId(request.getSolutionId().trim());
         result.setOntologyId(resolveOntologyId(request.getOntologyId()));
         result.setGeneratedAt(generatedAt.toString());
-        result.setExpiresAt(generatedAt.plusMinutes(properties.getKnowledgeGraph().getCallChainSubgraphTtlMinutes())
-            .toString());
+        result.setExpiresAt(
+            generatedAt.plusMinutes(properties.getKnowledgeGraph().getCallChainSubgraphTtlMinutes()).toString());
         result.setGraph(graph);
         result.setSummary(buildSummary(callChainTree, graph, resourceSubgraphResult.matchResult()));
         store.save(result);
@@ -155,7 +155,8 @@ public class CallChainSubgraphService {
         ensureEnabled();
         String resolvedOntologyId = resolveOntologyId(ontologyId);
         String normalizedEnvCode = envCode == null || envCode.isBlank() ? null : envCode.trim();
-        return store.list().stream()
+        return store.list()
+            .stream()
             .filter(result -> resolvedOntologyId.equals(resolveOntologyId(result.getOntologyId())))
             .filter(result -> normalizedEnvCode == null || normalizedEnvCode.equals(result.getEnvCode()))
             .map(this::toHistoryItem)
@@ -206,10 +207,8 @@ public class CallChainSubgraphService {
     private void addBusinessEntryEntity(CallChainSubgraphRequest request, Map<String, GraphEntity> entitiesById) {
         String menuId = request.getMenuId().trim();
         String businessEntityId = businessEntityId(menuId);
-        putEntity(entitiesById, createEntity(businessEntityId, BUSINESS_ENTITY_TYPE, menuId, menuId, Map.of(
-            "menuId", menuId,
-            "entryType", ENTRY_CONDITION_KEY,
-            "envCode", request.getEnvCode().trim())));
+        putEntity(entitiesById, createEntity(businessEntityId, BUSINESS_ENTITY_TYPE, menuId, menuId,
+            Map.of("menuId", menuId, "entryType", ENTRY_CONDITION_KEY, "envCode", request.getEnvCode().trim())));
     }
 
     /**
@@ -242,8 +241,9 @@ public class CallChainSubgraphService {
                 putEntity(entitiesById, createClusterEntity(clusterId, clusterEntityId));
                 putRelation(relationsById, createClusterRelation(serviceEntityId, clusterEntityId));
             }
-            serviceObservations.computeIfAbsent(serviceEntityId,
-                key -> new ServiceObservationAccumulator(node.getServiceName(), serviceEntityId, clusterId))
+            serviceObservations
+                .computeIfAbsent(serviceEntityId,
+                    key -> new ServiceObservationAccumulator(node.getServiceName(), serviceEntityId, clusterId))
                 .accumulate(flow.getFlowId(), node);
         }
     }
@@ -284,11 +284,13 @@ public class CallChainSubgraphService {
      */
     private Map<String, Object> buildSummary(CallChainTree tree, GraphSnapshot graph,
         CallChainResourceSubgraphService.MatchResult matchResult) {
-        Set<String> microserviceIds = graph.getEntities().stream()
+        Set<String> microserviceIds = graph.getEntities()
+            .stream()
             .filter(entity -> MICROSERVICE_ENTITY_TYPE.equals(entity.getType()))
             .map(GraphEntity::getId)
             .collect(LinkedHashSet::new, Set::add, Set::addAll);
-        Set<String> clusterIds = graph.getEntities().stream()
+        Set<String> clusterIds = graph.getEntities()
+            .stream()
             .filter(entity -> CLUSTER_ENTITY_TYPE.equals(entity.getType()))
             .map(GraphEntity::getId)
             .collect(LinkedHashSet::new, Set::add, Set::addAll);
@@ -323,16 +325,19 @@ public class CallChainSubgraphService {
         Map<String, GraphEntity> entitiesById = new LinkedHashMap<>();
         Map<String, GraphRelation> relationsById = new LinkedHashMap<>();
         Map<String, GraphObservation> observationsById = new LinkedHashMap<>();
-        callChainGraph.getEntities().stream()
+        callChainGraph.getEntities()
+            .stream()
             .filter(entity -> !clusterEntityMapping.containsKey(entity.getId()))
             .forEach(entity -> entitiesById.put(entity.getId(), entity));
         resourceGraph.getEntities().forEach(entity -> entitiesById.putIfAbsent(entity.getId(), entity));
-        callChainGraph.getRelations().stream()
+        callChainGraph.getRelations()
+            .stream()
             .map(relation -> remapClusterRelation(relation, clusterEntityMapping))
             .forEach(relation -> relationsById.putIfAbsent(relation.getId(), relation));
         resourceGraph.getRelations().forEach(relation -> relationsById.putIfAbsent(relation.getId(), relation));
         callChainGraph.getObservations().forEach(observation -> observationsById.put(observation.getId(), observation));
-        resourceGraph.getObservations().forEach(observation -> observationsById.putIfAbsent(observation.getId(), observation));
+        resourceGraph.getObservations()
+            .forEach(observation -> observationsById.putIfAbsent(observation.getId(), observation));
         GraphSnapshot merged = new GraphSnapshot();
         merged.setOntologyId(callChainGraph.getOntologyId());
         merged.setEnvCode(callChainGraph.getEnvCode());
@@ -361,16 +366,15 @@ public class CallChainSubgraphService {
      */
     private Map<String, String> resolveClusterEntityMapping(GraphSnapshot callChainGraph, GraphSnapshot resourceGraph) {
         Map<String, String> resourceClusterIds = new LinkedHashMap<>();
-        resourceGraph.getEntities().stream()
-            .filter(this::isResourceClusterEntity)
-            .forEach(entity -> {
-                String clusterId = readClusterId(entity);
-                if (clusterId != null) {
-                    resourceClusterIds.putIfAbsent(clusterId, entity.getId());
-                }
-            });
+        resourceGraph.getEntities().stream().filter(this::isResourceClusterEntity).forEach(entity -> {
+            String clusterId = readClusterId(entity);
+            if (clusterId != null) {
+                resourceClusterIds.putIfAbsent(clusterId, entity.getId());
+            }
+        });
         Map<String, String> mapping = new LinkedHashMap<>();
-        callChainGraph.getEntities().stream()
+        callChainGraph.getEntities()
+            .stream()
             .filter(entity -> CLUSTER_ENTITY_TYPE.equals(entity.getType()))
             .forEach(entity -> {
                 String clusterId = readClusterId(entity);
@@ -418,8 +422,7 @@ public class CallChainSubgraphService {
      */
     private boolean isResourceClusterEntity(GraphEntity entity) {
         String type = entity.getType();
-        return "ApplicationServiceCluster".equals(type)
-            || "MiddlewareCluster".equals(type)
+        return "ApplicationServiceCluster".equals(type) || "MiddlewareCluster".equals(type)
             || "K8sCluster".equals(type);
     }
 
@@ -467,7 +470,8 @@ public class CallChainSubgraphService {
      * @return the number of resource entities
      */
     private long countResourceEntities(GraphSnapshot graph) {
-        return graph.getEntities().stream()
+        return graph.getEntities()
+            .stream()
             .filter(entity -> !BUSINESS_ENTITY_TYPE.equals(entity.getType()))
             .filter(entity -> !MICROSERVICE_ENTITY_TYPE.equals(entity.getType()))
             .filter(entity -> !CLUSTER_ENTITY_TYPE.equals(entity.getType()))
@@ -481,13 +485,14 @@ public class CallChainSubgraphService {
      * @return the number of resource relations
      */
     private long countResourceRelations(GraphSnapshot graph) {
-        Set<String> callChainEntityIds = graph.getEntities().stream()
+        Set<String> callChainEntityIds = graph.getEntities()
+            .stream()
             .filter(entity -> BUSINESS_ENTITY_TYPE.equals(entity.getType())
-                || MICROSERVICE_ENTITY_TYPE.equals(entity.getType())
-                || CLUSTER_ENTITY_TYPE.equals(entity.getType()))
+                || MICROSERVICE_ENTITY_TYPE.equals(entity.getType()) || CLUSTER_ENTITY_TYPE.equals(entity.getType()))
             .map(GraphEntity::getId)
             .collect(Collectors.toSet());
-        return graph.getRelations().stream()
+        return graph.getRelations()
+            .stream()
             .filter(relation -> !callChainEntityIds.contains(relation.getFrom())
                 || !callChainEntityIds.contains(relation.getTo()))
             .count();
@@ -509,38 +514,21 @@ public class CallChainSubgraphService {
             if (entity == null) {
                 continue;
             }
-            long averageCost = accumulator.occurrenceCount > 0
-                ? accumulator.totalAvgCost / accumulator.occurrenceCount
-                : 0L;
+            long averageCost =
+                accumulator.occurrenceCount > 0 ? accumulator.totalAvgCost / accumulator.occurrenceCount : 0L;
             Map<String, Object> baseProperties = new LinkedHashMap<>();
             baseProperties.put("serviceName", accumulator.serviceName);
             baseProperties.put("clusterId", accumulator.clusterId);
             baseProperties.put("flowCount", accumulator.flowIds.size());
             baseProperties.put("occurrenceCount", accumulator.occurrenceCount);
-            observations.add(createObservation(
-                accumulator.entityId + "-avg-cost",
-                accumulator.entityId,
-                generatedAt,
-                "avgCost",
-                averageCost,
-                baseProperties));
-            observations.add(createObservation(
-                accumulator.entityId + "-min-cost",
-                accumulator.entityId,
-                generatedAt,
-                "minCost",
-                accumulator.minCost,
-                baseProperties));
-            observations.add(createObservation(
-                accumulator.entityId + "-max-cost",
-                accumulator.entityId,
-                generatedAt,
-                "maxCost",
-                accumulator.maxCost,
-                baseProperties));
-            Map<String, Object> entityProperties = entity.getProperties() == null
-                ? new LinkedHashMap<>()
-                : new LinkedHashMap<>(entity.getProperties());
+            observations.add(createObservation(accumulator.entityId + "-avg-cost", accumulator.entityId, generatedAt,
+                "avgCost", averageCost, baseProperties));
+            observations.add(createObservation(accumulator.entityId + "-min-cost", accumulator.entityId, generatedAt,
+                "minCost", accumulator.minCost, baseProperties));
+            observations.add(createObservation(accumulator.entityId + "-max-cost", accumulator.entityId, generatedAt,
+                "maxCost", accumulator.maxCost, baseProperties));
+            Map<String, Object> entityProperties =
+                entity.getProperties() == null ? new LinkedHashMap<>() : new LinkedHashMap<>(entity.getProperties());
             entityProperties.put("avgCost", averageCost);
             entityProperties.put("minCost", accumulator.minCost);
             entityProperties.put("maxCost", accumulator.maxCost);
@@ -753,9 +741,7 @@ public class CallChainSubgraphService {
      * @return the resolved ontology ID
      */
     private String resolveOntologyId(String ontologyId) {
-        return ontologyId == null || ontologyId.isBlank()
-            ? GraphSchemaRegistry.DEFAULT_ONTOLOGY_ID
-            : ontologyId.trim();
+        return ontologyId == null || ontologyId.isBlank() ? GraphSchemaRegistry.DEFAULT_ONTOLOGY_ID : ontologyId.trim();
     }
 
     /**
@@ -765,9 +751,8 @@ public class CallChainSubgraphService {
      * @return the resolved query mode
      */
     private String resolveQueryMode(String queryMode) {
-        String resolvedMode = queryMode == null || queryMode.isBlank()
-            ? properties.getCallChain().getQueryMode()
-            : queryMode;
+        String resolvedMode =
+            queryMode == null || queryMode.isBlank() ? properties.getCallChain().getQueryMode() : queryMode;
         if (resolvedMode == null || resolvedMode.isBlank()) {
             return "service";
         }
@@ -825,8 +810,7 @@ public class CallChainSubgraphService {
      */
     private String shortClusterName(String clusterId) {
         int separatorIndex = clusterId.lastIndexOf('_');
-        return separatorIndex >= 0 && separatorIndex < clusterId.length() - 1
-            ? clusterId.substring(separatorIndex + 1)
+        return separatorIndex >= 0 && separatorIndex < clusterId.length() - 1 ? clusterId.substring(separatorIndex + 1)
             : clusterId;
     }
 

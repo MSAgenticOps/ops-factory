@@ -12,7 +12,6 @@ import static org.junit.Assert.assertTrue;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 
 import org.junit.Before;
-
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;

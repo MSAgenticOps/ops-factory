@@ -6,11 +6,12 @@ package com.huawei.opsfactory.gateway.controller.machine;
 
 import com.huawei.opsfactory.common.aop.BasicAuth;
 import com.huawei.opsfactory.gateway.controller.base.BaseClusterRelationController;
-import com.huawei.opsfactory.gateway.service.ClusterRelationService;
 import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
+import com.huawei.opsfactory.gateway.service.ClusterRelationService;
 
 import jakarta.servlet.http.HttpServletRequest;
+
 import org.apache.servicecomb.provider.rest.common.RestSchema;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;

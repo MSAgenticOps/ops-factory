@@ -16,6 +16,7 @@ import java.util.List;
 
 /**
  * The WebConfig.
+ *
  * @author x00000000
  * @since 2026-05-26
  */

@@ -12,18 +12,24 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.huawei.opsfactory.knowledge.config.KnowledgeProperties;
-import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 class SearchServiceTest {
 
     private EmbeddingService embeddingService;
+
     private LexicalIndexService lexicalIndexService;
+
     private VectorIndexService vectorIndexService;
+
     private SearchService searchService;
 
     private SearchService.SearchableChunk chunk1;
+
     private SearchService.SearchableChunk chunk2;
 
     @BeforeEach
@@ -34,14 +40,10 @@ class SearchServiceTest {
         vectorIndexService = mock(VectorIndexService.class);
         searchService = new SearchService(properties, embeddingService, lexicalIndexService, vectorIndexService);
 
-        chunk1 = new SearchService.SearchableChunk(
-            "chk-1", "doc-1", "src-1", "Title A", List.of("A"), List.of("kw1"),
-            "text one", "text one", 1, 1, 1, "ACTIVE", "user"
-        );
-        chunk2 = new SearchService.SearchableChunk(
-            "chk-2", "doc-1", "src-1", "Title B", List.of("B"), List.of("kw2"),
-            "text two", "text two", 2, 2, 2, "ACTIVE", "user"
-        );
+        chunk1 = new SearchService.SearchableChunk("chk-1", "doc-1", "src-1", "Title A", List.of("A"), List.of("kw1"),
+            "text one", "text one", 1, 1, 1, "ACTIVE", "user");
+        chunk2 = new SearchService.SearchableChunk("chk-2", "doc-1", "src-1", "Title B", List.of("B"), List.of("kw2"),
+            "text two", "text two", 2, 2, 2, "ACTIVE", "user");
     }
 
     private SearchService.SearchOptions defaultOptions() {
@@ -50,25 +52,19 @@ class SearchServiceTest {
 
     @Test
     void shouldReturnEmptyWhenQueryIsBlank() {
-        List<SearchService.SearchMatch> result = searchService.search(
-            List.of(chunk1), "", defaultOptions()
-        );
+        List<SearchService.SearchMatch> result = searchService.search(List.of(chunk1), "", defaultOptions());
         assertThat(result).isEmpty();
     }
 
     @Test
     void shouldReturnEmptyWhenQueryIsNull() {
-        List<SearchService.SearchMatch> result = searchService.search(
-            List.of(chunk1), null, defaultOptions()
-        );
+        List<SearchService.SearchMatch> result = searchService.search(List.of(chunk1), null, defaultOptions());
         assertThat(result).isEmpty();
     }
 
     @Test
     void shouldReturnEmptyWhenQueryIsWhitespace() {
-        List<SearchService.SearchMatch> result = searchService.search(
-            List.of(chunk1), "   ", defaultOptions()
-        );
+        List<SearchService.SearchMatch> result = searchService.search(List.of(chunk1), "   ", defaultOptions());
         assertThat(result).isEmpty();
     }
 
@@ -89,8 +85,7 @@ class SearchServiceTest {
 
     @Test
     void shouldReturnSemanticMatchesInSemanticMode() {
-        when(lexicalIndexService.search(eq("query"), any(), eq(10)))
-            .thenReturn(List.of());
+        when(lexicalIndexService.search(eq("query"), any(), eq(10))).thenReturn(List.of());
         when(embeddingService.embedQuery("query")).thenReturn(List.of());
         when(vectorIndexService.search(any(), any(), anyInt()))
             .thenReturn(List.of(new VectorIndexService.SemanticHit("chk-1", 0.85)));
@@ -111,28 +106,25 @@ class SearchServiceTest {
         when(vectorIndexService.search(any(), any(), anyInt()))
             .thenReturn(List.of(new VectorIndexService.SemanticHit("chk-2", 0.8)));
 
-        List<SearchService.SearchMatch> result = searchService.search(
-            List.of(chunk1, chunk2), "query", defaultOptions()
-        );
+        List<SearchService.SearchMatch> result =
+            searchService.search(List.of(chunk1, chunk2), "query", defaultOptions());
 
         assertThat(result).hasSize(2);
 
-        SearchService.SearchMatch match1 = result.stream()
-            .filter(m -> m.chunk().id().equals("chk-1")).findFirst().orElseThrow();
+        SearchService.SearchMatch match1 =
+            result.stream().filter(m -> m.chunk().id().equals("chk-1")).findFirst().orElseThrow();
         assertThat(match1.fusionScore()).isEqualTo(1.0 / (60 + 1));
 
-        SearchService.SearchMatch match2 = result.stream()
-            .filter(m -> m.chunk().id().equals("chk-2")).findFirst().orElseThrow();
+        SearchService.SearchMatch match2 =
+            result.stream().filter(m -> m.chunk().id().equals("chk-2")).findFirst().orElseThrow();
         assertThat(match2.fusionScore()).isEqualTo(1.0 / (60 + 1));
     }
 
     @Test
     void shouldFilterByScoreThreshold() {
         when(lexicalIndexService.search(eq("query"), any(), eq(10)))
-            .thenReturn(List.of(
-                new LexicalIndexService.LexicalHit("chk-1", 0.9, List.of("text")),
-                new LexicalIndexService.LexicalHit("chk-2", 0.1, List.of("text"))
-            ));
+            .thenReturn(List.of(new LexicalIndexService.LexicalHit("chk-1", 0.9, List.of("text")),
+                new LexicalIndexService.LexicalHit("chk-2", 0.1, List.of("text"))));
         when(embeddingService.embedQuery("query")).thenReturn(List.of());
         when(vectorIndexService.search(any(), any(), anyInt())).thenReturn(List.of());
 
@@ -146,10 +138,8 @@ class SearchServiceTest {
     @Test
     void shouldLimitByFinalTopK() {
         when(lexicalIndexService.search(eq("query"), any(), eq(10)))
-            .thenReturn(List.of(
-                new LexicalIndexService.LexicalHit("chk-1", 0.9, List.of("text")),
-                new LexicalIndexService.LexicalHit("chk-2", 0.8, List.of("text"))
-            ));
+            .thenReturn(List.of(new LexicalIndexService.LexicalHit("chk-1", 0.9, List.of("text")),
+                new LexicalIndexService.LexicalHit("chk-2", 0.8, List.of("text"))));
         when(embeddingService.embedQuery("query")).thenReturn(List.of());
         when(vectorIndexService.search(any(), any(), anyInt())).thenReturn(List.of());
 
@@ -163,10 +153,8 @@ class SearchServiceTest {
     @Test
     void shouldSkipChunksNotInChunkByIdForLexicalMode() {
         when(lexicalIndexService.search(eq("query"), any(), eq(10)))
-            .thenReturn(List.of(
-                new LexicalIndexService.LexicalHit("chk-1", 0.9, List.of("text")),
-                new LexicalIndexService.LexicalHit("chk-unknown", 0.8, List.of("text"))
-            ));
+            .thenReturn(List.of(new LexicalIndexService.LexicalHit("chk-1", 0.9, List.of("text")),
+                new LexicalIndexService.LexicalHit("chk-unknown", 0.8, List.of("text"))));
         when(embeddingService.embedQuery("query")).thenReturn(List.of());
         when(vectorIndexService.search(any(), any(), anyInt())).thenReturn(List.of());
 

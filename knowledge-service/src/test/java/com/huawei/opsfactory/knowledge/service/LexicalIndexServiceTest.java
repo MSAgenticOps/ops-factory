@@ -14,12 +14,14 @@ import com.huawei.opsfactory.knowledge.config.KnowledgeRuntimeProperties;
 import com.huawei.opsfactory.knowledge.repository.ChunkRepository;
 import com.huawei.opsfactory.knowledge.repository.ProfileRepository;
 import com.huawei.opsfactory.knowledge.repository.SourceRepository;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.Optional;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Optional;
 
 class LexicalIndexServiceTest {
 
@@ -27,9 +29,11 @@ class LexicalIndexServiceTest {
     Path tempDir;
 
     private LexicalIndexService service;
+
     private ProfileBootstrapService profileBootstrapService;
 
     private SearchService.SearchableChunk chunk1;
+
     private SearchService.SearchableChunk chunk2;
 
     @BeforeEach
@@ -47,21 +51,15 @@ class LexicalIndexServiceTest {
         when(profileRepository.findRetrievalByName(anyString())).thenReturn(Optional.empty());
 
         profileBootstrapService = new ProfileBootstrapService(profileRepository, properties);
-        service = new LexicalIndexService(
-            storageManager, properties, chunkRepository, sourceRepository,
-            profileRepository, profileBootstrapService
-        );
+        service = new LexicalIndexService(storageManager, properties, chunkRepository, sourceRepository,
+            profileRepository, profileBootstrapService);
 
-        chunk1 = new SearchService.SearchableChunk(
-            "chk-1", "doc-1", "src-1", "Machine Learning",
-            List.of("ML"), List.of("algorithm", "model"),
-            "Machine learning is a branch of artificial intelligence.", "markdown", 1, 1, 1, "ACTIVE", "user"
-        );
-        chunk2 = new SearchService.SearchableChunk(
-            "chk-2", "doc-1", "src-1", "Deep Learning",
-            List.of("DL"), List.of("neural", "network"),
-            "Deep learning uses multi-layered neural networks.", "markdown", 2, 2, 2, "ACTIVE", "user"
-        );
+        chunk1 = new SearchService.SearchableChunk("chk-1", "doc-1", "src-1", "Machine Learning", List.of("ML"),
+            List.of("algorithm", "model"), "Machine learning is a branch of artificial intelligence.", "markdown", 1, 1,
+            1, "ACTIVE", "user");
+        chunk2 = new SearchService.SearchableChunk("chk-2", "doc-1", "src-1", "Deep Learning", List.of("DL"),
+            List.of("neural", "network"), "Deep learning uses multi-layered neural networks.", "markdown", 2, 2, 2,
+            "ACTIVE", "user");
     }
 
     @Test
@@ -101,11 +99,9 @@ class LexicalIndexServiceTest {
     void shouldUpsertChunksIntoExistingIndex() {
         service.rebuildIndex(List.of(chunk1));
 
-        SearchService.SearchableChunk updatedChunk = new SearchService.SearchableChunk(
-            "chk-1", "doc-1", "src-1", "Updated Title",
-            List.of("ML"), List.of("updated"),
-            "Updated text about quantum computing algorithms.", "markdown", 1, 1, 1, "ACTIVE", "user"
-        );
+        SearchService.SearchableChunk updatedChunk = new SearchService.SearchableChunk("chk-1", "doc-1", "src-1",
+            "Updated Title", List.of("ML"), List.of("updated"), "Updated text about quantum computing algorithms.",
+            "markdown", 1, 1, 1, "ACTIVE", "user");
         service.upsertChunks(List.of(updatedChunk));
 
         List<LexicalIndexService.LexicalHit> hits = service.search("quantum computing", List.of(updatedChunk), 10);

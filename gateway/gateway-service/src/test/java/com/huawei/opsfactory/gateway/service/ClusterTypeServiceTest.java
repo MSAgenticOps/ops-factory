@@ -10,13 +10,12 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-
-import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

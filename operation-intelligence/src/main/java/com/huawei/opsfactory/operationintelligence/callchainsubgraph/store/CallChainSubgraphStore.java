@@ -15,8 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.io.OutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -191,6 +191,7 @@ public class CallChainSubgraphStore {
     }
 
     private Path filePath(String subgraphId) {
-        return resolveRoot().resolve("subgraph_" + PathValidator.requireSafeSegment(subgraphId, "subgraphId") + ".json").normalize();
+        return resolveRoot().resolve("subgraph_" + PathValidator.requireSafeSegment(subgraphId, "subgraphId") + ".json")
+            .normalize();
     }
 }

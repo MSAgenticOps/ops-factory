@@ -12,10 +12,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.io.IOException;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+
+import java.io.IOException;
 
 class KnowledgeSourceProfileConfigIntegrationTest extends KnowledgeApiIntegrationTestSupport {
 
@@ -31,9 +33,11 @@ class KnowledgeSourceProfileConfigIntegrationTest extends KnowledgeApiIntegratio
 
         JsonNode sourceABefore = getSource(sourceA);
         JsonNode sourceBBefore = getSource(sourceB);
-        assertThat(sourceABefore.path("retrievalProfileId").asText()).isEqualTo(sourceBBefore.path("retrievalProfileId").asText());
+        assertThat(sourceABefore.path("retrievalProfileId").asText())
+            .isEqualTo(sourceBBefore.path("retrievalProfileId").asText());
 
-        JsonNode updated = readJson(mockMvc.perform(put("/api/knowledge/sources/{sourceId}/config/retrieval-profile", sourceA)
+        JsonNode updated =
+            readJson(mockMvc.perform(put("/api/knowledge/sources/{sourceId}/config/retrieval-profile", sourceA)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -47,9 +51,7 @@ class KnowledgeSourceProfileConfigIntegrationTest extends KnowledgeApiIntegratio
                         }
                       }
                     }
-                    """))
-            .andExpect(status().isOk())
-            .andReturn());
+                    """)).andExpect(status().isOk()).andReturn());
 
         assertThat(updated.path("createdFromDefault").asBoolean()).isTrue();
         assertThat(updated.path("scope").asText()).isEqualTo("source");
@@ -61,15 +63,18 @@ class KnowledgeSourceProfileConfigIntegrationTest extends KnowledgeApiIntegratio
 
         JsonNode sourceAAfter = getSource(sourceA);
         JsonNode sourceBAfter = getSource(sourceB);
-        assertThat(sourceAAfter.path("retrievalProfileId").asText()).isNotEqualTo(sourceABefore.path("retrievalProfileId").asText());
-        assertThat(sourceBAfter.path("retrievalProfileId").asText()).isEqualTo(sourceBBefore.path("retrievalProfileId").asText());
+        assertThat(sourceAAfter.path("retrievalProfileId").asText())
+            .isNotEqualTo(sourceABefore.path("retrievalProfileId").asText());
+        assertThat(sourceBAfter.path("retrievalProfileId").asText())
+            .isEqualTo(sourceBBefore.path("retrievalProfileId").asText());
     }
 
     @Test
     void sourceConfigUpdateAcceptsInheritedDefaultProfileNamesWithoutServerError() throws Exception {
         String sourceId = createSource();
 
-        JsonNode retrievalResponse = readJson(mockMvc.perform(put("/api/knowledge/sources/{sourceId}/config/retrieval-profile", sourceId)
+        JsonNode retrievalResponse =
+            readJson(mockMvc.perform(put("/api/knowledge/sources/{sourceId}/config/retrieval-profile", sourceId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -80,13 +85,12 @@ class KnowledgeSourceProfileConfigIntegrationTest extends KnowledgeApiIntegratio
                         }
                       }
                     }
-                    """))
-            .andExpect(status().isOk())
-            .andReturn());
+                    """)).andExpect(status().isOk()).andReturn());
         assertThat(retrievalResponse.path("name").asText()).isNotEqualTo("system-default-retrieval");
         assertThat(retrievalResponse.path("scope").asText()).isEqualTo("source");
 
-        JsonNode indexResponse = readJson(mockMvc.perform(put("/api/knowledge/sources/{sourceId}/config/index-profile", sourceId)
+        JsonNode indexResponse =
+            readJson(mockMvc.perform(put("/api/knowledge/sources/{sourceId}/config/index-profile", sourceId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -97,9 +101,7 @@ class KnowledgeSourceProfileConfigIntegrationTest extends KnowledgeApiIntegratio
                         }
                       }
                     }
-                    """))
-            .andExpect(status().isOk())
-            .andReturn());
+                    """)).andExpect(status().isOk()).andReturn());
         assertThat(indexResponse.path("name").asText()).isNotEqualTo("system-default-index");
         assertThat(indexResponse.path("scope").asText()).isEqualTo("source");
     }
@@ -108,9 +110,10 @@ class KnowledgeSourceProfileConfigIntegrationTest extends KnowledgeApiIntegratio
     void sourceConfigGetExposesReadonlySystemProfileMetadata() throws Exception {
         String sourceId = createSource();
 
-        JsonNode response = readJson(mockMvc.perform(get("/api/knowledge/sources/{sourceId}/config/retrieval-profile", sourceId))
-            .andExpect(status().isOk())
-            .andReturn());
+        JsonNode response =
+            readJson(mockMvc.perform(get("/api/knowledge/sources/{sourceId}/config/retrieval-profile", sourceId))
+                .andExpect(status().isOk())
+                .andReturn());
 
         assertThat(response.path("scope").asText()).isEqualTo("system");
         assertThat(response.path("readonly").asBoolean()).isTrue();
@@ -122,7 +125,8 @@ class KnowledgeSourceProfileConfigIntegrationTest extends KnowledgeApiIntegratio
         String sourceId = createSource();
         String retrievalProfileId = getSource(sourceId).path("retrievalProfileId").asText();
 
-        JsonNode response = readJson(mockMvc.perform(patch("/api/knowledge/profiles/retrieval/{profileId}", retrievalProfileId)
+        JsonNode response =
+            readJson(mockMvc.perform(patch("/api/knowledge/profiles/retrieval/{profileId}", retrievalProfileId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -132,9 +136,7 @@ class KnowledgeSourceProfileConfigIntegrationTest extends KnowledgeApiIntegratio
                         }
                       }
                     }
-                    """))
-            .andExpect(status().isConflict())
-            .andReturn());
+                    """)).andExpect(status().isConflict()).andReturn());
 
         assertThat(response.path("code").asText()).isEqualTo("READ_ONLY_PROFILE");
     }
@@ -144,7 +146,8 @@ class KnowledgeSourceProfileConfigIntegrationTest extends KnowledgeApiIntegratio
         String sourceId = createSource();
         JsonNode sourceBefore = getSource(sourceId);
 
-        JsonNode retrievalCustom = readJson(mockMvc.perform(put("/api/knowledge/sources/{sourceId}/config/retrieval-profile", sourceId)
+        JsonNode retrievalCustom =
+            readJson(mockMvc.perform(put("/api/knowledge/sources/{sourceId}/config/retrieval-profile", sourceId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -154,12 +157,11 @@ class KnowledgeSourceProfileConfigIntegrationTest extends KnowledgeApiIntegratio
                         }
                       }
                     }
-                    """))
-            .andExpect(status().isOk())
-            .andReturn());
+                    """)).andExpect(status().isOk()).andReturn());
         String retrievalCustomId = retrievalCustom.path("id").asText();
 
-        JsonNode indexCustom = readJson(mockMvc.perform(put("/api/knowledge/sources/{sourceId}/config/index-profile", sourceId)
+        JsonNode indexCustom =
+            readJson(mockMvc.perform(put("/api/knowledge/sources/{sourceId}/config/index-profile", sourceId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -169,25 +171,26 @@ class KnowledgeSourceProfileConfigIntegrationTest extends KnowledgeApiIntegratio
                         }
                       }
                     }
-                    """))
-            .andExpect(status().isOk())
-            .andReturn());
+                    """)).andExpect(status().isOk()).andReturn());
         String indexCustomId = indexCustom.path("id").asText();
 
-        JsonNode retrievalReset = readJson(mockMvc.perform(post("/api/knowledge/sources/{sourceId}/config/retrieval-profile:reset", sourceId))
-            .andExpect(status().isOk())
-            .andReturn());
+        JsonNode retrievalReset =
+            readJson(mockMvc.perform(post("/api/knowledge/sources/{sourceId}/config/retrieval-profile:reset", sourceId))
+                .andExpect(status().isOk())
+                .andReturn());
         assertThat(retrievalReset.path("scope").asText()).isEqualTo("system");
         assertThat(retrievalReset.path("id").asText()).isEqualTo(sourceBefore.path("retrievalProfileId").asText());
 
-        JsonNode indexReset = readJson(mockMvc.perform(post("/api/knowledge/sources/{sourceId}/config/index-profile:reset", sourceId))
-            .andExpect(status().isOk())
-            .andReturn());
+        JsonNode indexReset =
+            readJson(mockMvc.perform(post("/api/knowledge/sources/{sourceId}/config/index-profile:reset", sourceId))
+                .andExpect(status().isOk())
+                .andReturn());
         assertThat(indexReset.path("scope").asText()).isEqualTo("system");
         assertThat(indexReset.path("id").asText()).isEqualTo(sourceBefore.path("indexProfileId").asText());
 
         JsonNode sourceAfter = getSource(sourceId);
-        assertThat(sourceAfter.path("retrievalProfileId").asText()).isEqualTo(sourceBefore.path("retrievalProfileId").asText());
+        assertThat(sourceAfter.path("retrievalProfileId").asText())
+            .isEqualTo(sourceBefore.path("retrievalProfileId").asText());
         assertThat(sourceAfter.path("indexProfileId").asText()).isEqualTo(sourceBefore.path("indexProfileId").asText());
         assertThat(sourceAfter.path("rebuildRequired").asBoolean()).isTrue();
 
@@ -198,8 +201,7 @@ class KnowledgeSourceProfileConfigIntegrationTest extends KnowledgeApiIntegratio
     }
 
     private JsonNode getSource(String sourceId) throws Exception {
-        return readJson(mockMvc.perform(get("/api/knowledge/sources/{sourceId}", sourceId))
-            .andExpect(status().isOk())
-            .andReturn());
+        return readJson(
+            mockMvc.perform(get("/api/knowledge/sources/{sourceId}", sourceId)).andExpect(status().isOk()).andReturn());
     }
 }

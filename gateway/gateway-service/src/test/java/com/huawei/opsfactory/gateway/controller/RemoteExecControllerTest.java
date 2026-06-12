@@ -9,10 +9,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.huawei.opsfactory.gateway.config.BaseControllerTestConfig;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
-import com.huawei.opsfactory.gateway.config.BaseControllerTestConfig;
 import com.huawei.opsfactory.gateway.service.CommandWhitelistService;
 import com.huawei.opsfactory.gateway.service.RemoteExecutionService;
 

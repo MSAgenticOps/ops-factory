@@ -50,6 +50,8 @@ public class KnowledgeGraphService {
 
     private static final String EXPORT_FORMAT = "KG_NATIVE_JSON";
 
+    private static final int MAX_SAFE_ID_LENGTH = 128;
+
     private final Map<String, ReentrantLock> ontologyLocks = new ConcurrentHashMap<>();
 
     private final OperationIntelligenceProperties properties;
@@ -101,11 +103,17 @@ public class KnowledgeGraphService {
      *
      * @param ontology the ontology
      * @return imported ontology
+     * @throws ResponseStatusException if the ontology is null, its ID is invalid, or the ID already exists
      */
     public GraphOntology importOntology(GraphOntology ontology) {
         ensureEnabled();
+        if (ontology == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ontology is required");
+        }
+        requireText(ontology.getOntologyId(), "ontologyId");
+        ontology.setOntologyId(ontology.getOntologyId().trim());
         requireSafeId(ontology.getOntologyId(), "ontologyId");
-        GraphOntology registered = schemaRegistry.register(ontology);
+        GraphOntology registered = schemaRegistry.registerNew(ontology);
         ontologyStore.save(registered);
         return registered;
     }
@@ -262,10 +270,8 @@ public class KnowledgeGraphService {
             GraphSnapshot snapshot = getRequiredSnapshot(resolvedId, envCode);
             GraphEntity existing = getEntity(resolvedId, envCode, entityId);
             GraphEntity updated = mergeEntity(existing, request, entityId);
-            persistSnapshotModification(snapshot, next ->
-                next.setEntities(snapshot.getEntities().stream()
-                    .map(e -> entityId.equals(e.getId()) ? updated : e)
-                    .toList()));
+            persistSnapshotModification(snapshot, next -> next.setEntities(
+                snapshot.getEntities().stream().map(e -> entityId.equals(e.getId()) ? updated : e).toList()));
             return updated;
         });
     }
@@ -287,15 +293,13 @@ public class KnowledgeGraphService {
             GraphSnapshot snapshot = getRequiredSnapshot(resolvedId, envCode);
             getEntity(resolvedId, envCode, entityId);
             persistSnapshotModification(snapshot, next -> {
-                next.setEntities(snapshot.getEntities().stream()
-                    .filter(e -> !entityId.equals(e.getId()))
-                    .toList());
-                next.setRelations(snapshot.getRelations().stream()
+                next.setEntities(snapshot.getEntities().stream().filter(e -> !entityId.equals(e.getId())).toList());
+                next.setRelations(snapshot.getRelations()
+                    .stream()
                     .filter(r -> !entityId.equals(r.getFrom()) && !entityId.equals(r.getTo()))
                     .toList());
-                next.setObservations(snapshot.getObservations().stream()
-                    .filter(o -> !entityId.equals(o.getEntityId()))
-                    .toList());
+                next.setObservations(
+                    snapshot.getObservations().stream().filter(o -> !entityId.equals(o.getEntityId())).toList());
             });
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("entityId", entityId);
@@ -816,7 +820,16 @@ public class KnowledgeGraphService {
 
     private void requireSafeId(String value, String fieldName) {
         requireText(value, fieldName);
-        if (!PathValidator.SAFE_SEGMENT.matcher(value).matches()) {
+        String trimmedValue = value.trim();
+        if (!value.equals(trimmedValue)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                fieldName + " must not contain leading or trailing whitespace");
+        }
+        if (trimmedValue.length() > MAX_SAFE_ID_LENGTH) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                fieldName + " is too long. Maximum length is " + MAX_SAFE_ID_LENGTH);
+        }
+        if (!PathValidator.SAFE_SEGMENT.matcher(trimmedValue).matches()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                 fieldName + " contains unsupported path characters");
         }

@@ -4,16 +4,18 @@
 
 package com.huawei.opsfactory.gateway.controller.machine;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import com.huawei.opsfactory.gateway.service.BusinessServiceService;
 import com.huawei.opsfactory.gateway.service.ClusterService;
 import com.huawei.opsfactory.gateway.service.HostGroupService;
 import com.huawei.opsfactory.gateway.service.HostService;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test class for {@link HostMachineController}.

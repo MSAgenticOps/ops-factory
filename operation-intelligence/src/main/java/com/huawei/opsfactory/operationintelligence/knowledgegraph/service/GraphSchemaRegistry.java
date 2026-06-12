@@ -56,6 +56,22 @@ public class GraphSchemaRegistry {
     }
 
     /**
+     * Registers an ontology only when its id is not already present.
+     *
+     * @param ontology the ontology
+     * @return registered ontology
+     */
+    public GraphOntology registerNew(GraphOntology ontology) {
+        validateOntology(ontology);
+        GraphOntology existing = ontologies.putIfAbsent(ontology.getOntologyId(), ontology);
+        if (existing != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Ontology ID already exists: " + ontology.getOntologyId());
+        }
+        return ontology;
+    }
+
+    /**
      * Lists registered ontologies.
      *
      * @return ontologies

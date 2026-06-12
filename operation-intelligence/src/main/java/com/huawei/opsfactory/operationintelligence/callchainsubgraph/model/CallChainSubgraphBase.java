@@ -4,10 +4,10 @@
 
 package com.huawei.opsfactory.operationintelligence.callchainsubgraph.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
  * Base fields shared by subgraph result and history items.

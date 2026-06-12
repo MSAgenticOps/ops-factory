@@ -52,8 +52,11 @@ public class DvClient {
     private static final int MAX_RETRIES = 3;
 
     private static final String PATH_MOS = "/rest/eammimservice/v1/openapi/mit/mos";
+
     private static final String PATH_PERFORMANCE = "/rest/dvpmservice/v1/openapi/monitor/history/data";
+
     private static final String PATH_ALARMS = "/rest/fault/v1/current-alarms/scroll";
+
     private static final String PATH_TRACELOG = "/cmp/api/logmatrix/v1/logdata/tracelog";
 
     private static final int ALARM_BATCH_SIZE = 500;
@@ -168,7 +171,8 @@ public class DvClient {
      * @param request the performance data query request
      * @return the list of performance data results
      */
-    public List<PerformanceDataResult> fetchPerformanceData(DvEnvironmentInfo env, PerformanceDataQueryRequest request) {
+    public List<PerformanceDataResult> fetchPerformanceData(DvEnvironmentInfo env,
+        PerformanceDataQueryRequest request) {
         return executeWithRetry(() -> doFetchPerformanceData(env, request),
             "fetchPerformanceData[" + env.getEnvCode() + "]");
     }
@@ -182,7 +186,8 @@ public class DvClient {
      * @param request the performance data query request
      * @return the list of performance data results
      */
-    private List<PerformanceDataResult> doFetchPerformanceData(DvEnvironmentInfo env, PerformanceDataQueryRequest request) {
+    private List<PerformanceDataResult> doFetchPerformanceData(DvEnvironmentInfo env,
+        PerformanceDataQueryRequest request) {
         try {
             Map<String, Object> timeRanges = new LinkedHashMap<>();
             timeRanges.put(String.valueOf(request.getStartTime()), request.getEndTime());
@@ -220,7 +225,8 @@ public class DvClient {
      * @return the list of alarm info
      */
     public List<AlarmInfo> fetchCurrentAlarms(DvEnvironmentInfo env, AlarmQueryRequest request) {
-        return executeWithRetry(() -> doFetchCurrentAlarms(env, request), "fetchCurrentAlarms[" + env.getEnvCode() + "]");
+        return executeWithRetry(() -> doFetchCurrentAlarms(env, request),
+            "fetchCurrentAlarms[" + env.getEnvCode() + "]");
     }
 
     /**
@@ -643,8 +649,8 @@ public class DvClient {
     private List<TraceLogRecord> doFetchByTraceId(DvEnvironmentInfo env, String solutionId, String traceId,
         long startTime, long endTime, int querySize) {
         try {
-            Map<String, Object> body =
-                buildTraceLogQueryByTraceId(traceId, env.getAgentSolutionType(), solutionId, startTime, endTime, querySize);
+            Map<String, Object> body = buildTraceLogQueryByTraceId(traceId, env.getAgentSolutionType(), solutionId,
+                startTime, endTime, querySize);
             String jsonBody = MAPPER.writeValueAsString(body);
 
             log.info("[TraceLog Request] URL: {}{}, TraceId: {}", env.getServerUrl(), PATH_TRACELOG, traceId);
@@ -739,8 +745,8 @@ public class DvClient {
      * @param querySize the query page size
      * @return the query request body map
      */
-    private Map<String, Object> buildTraceLogQueryByTraceId(String traceId, String agentSolutionType,
-        String solutionId, long startTime, long endTime, int querySize) {
+    private Map<String, Object> buildTraceLogQueryByTraceId(String traceId, String agentSolutionType, String solutionId,
+        long startTime, long endTime, int querySize) {
         Map<String, Object> must = new LinkedHashMap<>();
 
         // Exact TraceID match
@@ -762,8 +768,8 @@ public class DvClient {
      * @param querySize the query page size
      * @return the query request body map
      */
-    private Map<String, Object> buildTraceLogBody(String agentSolutionType, Map<String, Object> must,
-        long startTime, long endTime, int querySize) {
+    private Map<String, Object> buildTraceLogBody(String agentSolutionType, Map<String, Object> must, long startTime,
+        long endTime, int querySize) {
         List<Map<String, Object>> sort = List.of(Map.of("fieldName", "Time", "order", "desc"));
 
         // Use LinkedHashMap to preserve field order

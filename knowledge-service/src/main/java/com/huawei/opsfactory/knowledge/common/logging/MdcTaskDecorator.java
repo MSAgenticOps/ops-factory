@@ -4,12 +4,14 @@
 
 package com.huawei.opsfactory.knowledge.common.logging;
 
-import java.util.Map;
 import org.slf4j.MDC;
 import org.springframework.core.task.TaskDecorator;
 
+import java.util.Map;
+
 /**
  * The MdcTaskDecorator.
+ *
  * @author x00000000
  * @since 2026-05-26
  */

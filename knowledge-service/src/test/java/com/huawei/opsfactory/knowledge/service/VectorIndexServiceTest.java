@@ -8,12 +8,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
-import com.huawei.opsfactory.knowledge.config.KnowledgeRuntimeProperties;
 import com.huawei.opsfactory.knowledge.config.KnowledgeProperties;
-import java.nio.file.Path;
-import java.util.List;
+import com.huawei.opsfactory.knowledge.config.KnowledgeRuntimeProperties;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import java.nio.file.Path;
+import java.util.List;
 
 class VectorIndexServiceTest {
 
@@ -27,28 +29,13 @@ class VectorIndexServiceTest {
         KnowledgeProperties properties = new KnowledgeProperties();
         properties.getEmbedding().setDimensions(1024);
         StorageManager storageManager = new StorageManager(runtimeProperties);
-        VectorIndexService service = new VectorIndexService(
-            properties,
-            storageManager,
-            mock(com.huawei.opsfactory.knowledge.repository.ChunkRepository.class),
-            mock(EmbeddingService.class)
-        );
+        VectorIndexService service = new VectorIndexService(properties, storageManager,
+            mock(com.huawei.opsfactory.knowledge.repository.ChunkRepository.class), mock(EmbeddingService.class));
 
-        SearchService.SearchableChunk chunk = new SearchService.SearchableChunk(
-            "chk-1",
-            "doc-1",
-            "src-1",
-            "ITSM deployment",
-            List.of("Operations", "Deployment"),
-            List.of("itsm", "deployment"),
+        SearchService.SearchableChunk chunk = new SearchService.SearchableChunk("chk-1", "doc-1", "src-1",
+            "ITSM deployment", List.of("Operations", "Deployment"), List.of("itsm", "deployment"),
             "ITSM deployment lives in the operations environment",
-            "ITSM deployment lives in the operations environment",
-            1,
-            1,
-            1,
-            "ACTIVE",
-            "tester"
-        );
+            "ITSM deployment lives in the operations environment", 1, 1, 1, "ACTIVE", "tester");
 
         List<Double> vector = createVector(1024, 0.25d);
         service.rebuildIndex(List.of(chunk), java.util.Map.of(chunk.id(), vector));
@@ -67,30 +54,16 @@ class VectorIndexServiceTest {
         KnowledgeProperties properties = new KnowledgeProperties();
         properties.getEmbedding().setDimensions(1024);
         StorageManager storageManager = new StorageManager(runtimeProperties);
-        VectorIndexService service = new VectorIndexService(
-            properties,
-            storageManager,
-            mock(com.huawei.opsfactory.knowledge.repository.ChunkRepository.class),
-            mock(EmbeddingService.class)
-        );
+        VectorIndexService service = new VectorIndexService(properties, storageManager,
+            mock(com.huawei.opsfactory.knowledge.repository.ChunkRepository.class), mock(EmbeddingService.class));
 
-        SearchService.SearchableChunk chunk = new SearchService.SearchableChunk(
-            "chk-1",
-            "doc-1",
-            "src-1",
-            "ITSM deployment",
-            List.of("Operations", "Deployment"),
-            List.of("itsm", "deployment"),
+        SearchService.SearchableChunk chunk = new SearchService.SearchableChunk("chk-1", "doc-1", "src-1",
+            "ITSM deployment", List.of("Operations", "Deployment"), List.of("itsm", "deployment"),
             "ITSM deployment lives in the operations environment",
-            "ITSM deployment lives in the operations environment",
-            1,
-            1,
-            1,
-            "ACTIVE",
-            "tester"
-        );
+            "ITSM deployment lives in the operations environment", 1, 1, 1, "ACTIVE", "tester");
 
-        assertThatThrownBy(() -> service.rebuildIndex(List.of(chunk), java.util.Map.of(chunk.id(), createVector(384, 0.25d))))
+        assertThatThrownBy(
+            () -> service.rebuildIndex(List.of(chunk), java.util.Map.of(chunk.id(), createVector(384, 0.25d))))
             .isInstanceOf(com.huawei.opsfactory.knowledge.common.error.RetrievalConfigurationException.class)
             .hasMessageContaining("Embedding dimension mismatch");
     }

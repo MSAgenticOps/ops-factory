@@ -4,8 +4,14 @@
 
 package com.huawei.opsfactory.knowledge.repository;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.knowledge.common.util.Jsons;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Repository;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -13,12 +19,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.stereotype.Repository;
 
 /**
  * The ProfileRepository.
+ *
  * @author x00000000
  * @since 2026-05-26
  */
@@ -27,12 +31,17 @@ import org.springframework.stereotype.Repository;
 public class ProfileRepository {
 
     private static final String INDEX_TABLE = "index_profile";
+
     private static final String RETRIEVAL_TABLE = "retrieval_profile";
+
     private static final Set<String> ALLOWED_TABLES = Set.of(INDEX_TABLE, RETRIEVAL_TABLE);
 
     private final JdbcTemplate jdbcTemplate;
+
     private final ObjectMapper objectMapper;
+
     private final RowMapper<ProfileRecord> indexMapper = (rs, rowNum) -> map(rs, "index");
+
     private final RowMapper<ProfileRecord> retrievalMapper = (rs, rowNum) -> map(rs, "retrieval");
 
     public ProfileRepository(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
@@ -101,12 +110,9 @@ public class ProfileRepository {
         String sql = "insert into " + table
             + " (id, name, config_json, owner_source_id, readonly, derived_from_profile_id, created_at, updated_at)"
             + " values (?,?,?,?,?,?,?,?)";
-        jdbcTemplate.update(
-            sql,
-            record.id(), record.name(), Jsons.write(objectMapper, record.config()), record.ownerSourceId(),
-            record.readonly() ? 1 : 0, record.derivedFromProfileId(), record.createdAt().toString(),
-            record.updatedAt().toString()
-        );
+        jdbcTemplate.update(sql, record.id(), record.name(), Jsons.write(objectMapper, record.config()),
+            record.ownerSourceId(), record.readonly() ? 1 : 0, record.derivedFromProfileId(),
+            record.createdAt().toString(), record.updatedAt().toString());
     }
 
     private void update(String table, ProfileRecord record) {
@@ -114,11 +120,8 @@ public class ProfileRepository {
         String sql = "update " + table
             + " set name=?, config_json=?, owner_source_id=?, readonly=?, derived_from_profile_id=?, updated_at=?"
             + " where id=?";
-        jdbcTemplate.update(
-            sql,
-            record.name(), Jsons.write(objectMapper, record.config()), record.ownerSourceId(), record.readonly() ? 1 : 0,
-            record.derivedFromProfileId(), record.updatedAt().toString(), record.id()
-        );
+        jdbcTemplate.update(sql, record.name(), Jsons.write(objectMapper, record.config()), record.ownerSourceId(),
+            record.readonly() ? 1 : 0, record.derivedFromProfileId(), record.updatedAt().toString(), record.id());
     }
 
     private void delete(String table, String id) {
@@ -136,9 +139,8 @@ public class ProfileRepository {
         return jdbcTemplate.query("select * from " + table + " where name = ?", mapper, name).stream().findFirst();
     }
 
-    private Optional<ProfileRecord> findByOwnerSourceId(
-        String table, RowMapper<ProfileRecord> mapper, String sourceId
-    ) {
+    private Optional<ProfileRecord> findByOwnerSourceId(String table, RowMapper<ProfileRecord> mapper,
+        String sourceId) {
         validateTable(table);
         return jdbcTemplate.query("select * from " + table + " where owner_source_id = ?", mapper, sourceId)
             .stream()
@@ -152,29 +154,13 @@ public class ProfileRepository {
     }
 
     private ProfileRecord map(ResultSet rs, String type) throws SQLException {
-        return new ProfileRecord(
-            rs.getString("id"),
-            rs.getString("name"),
-            Jsons.readMap(objectMapper, rs.getString("config_json")),
-            type,
-            rs.getString("owner_source_id"),
-            rs.getInt("readonly") != 0,
-            rs.getString("derived_from_profile_id"),
-            Instant.parse(rs.getString("created_at")),
-            Instant.parse(rs.getString("updated_at"))
-        );
+        return new ProfileRecord(rs.getString("id"), rs.getString("name"),
+            Jsons.readMap(objectMapper, rs.getString("config_json")), type, rs.getString("owner_source_id"),
+            rs.getInt("readonly") != 0, rs.getString("derived_from_profile_id"),
+            Instant.parse(rs.getString("created_at")), Instant.parse(rs.getString("updated_at")));
     }
 
-    public record ProfileRecord(
-        String id,
-        String name,
-        Map<String, Object> config,
-        String type,
-        String ownerSourceId,
-        boolean readonly,
-        String derivedFromProfileId,
-        Instant createdAt,
-        Instant updatedAt
-    ) {
+    public record ProfileRecord(String id, String name, Map<String, Object> config, String type, String ownerSourceId,
+        boolean readonly, String derivedFromProfileId, Instant createdAt, Instant updatedAt) {
     }
 }

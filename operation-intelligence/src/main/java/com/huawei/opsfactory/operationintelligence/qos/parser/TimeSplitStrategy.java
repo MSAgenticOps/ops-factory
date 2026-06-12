@@ -24,7 +24,9 @@ import java.util.List;
 public class TimeSplitStrategy {
 
     private static final Logger log = LoggerFactory.getLogger(TimeSplitStrategy.class);
+
     private static final int DV_MAX_RESULTS = 10000;
+
     private final OperationIntelligenceProperties.CallChain.TimeSplit config;
 
     /**

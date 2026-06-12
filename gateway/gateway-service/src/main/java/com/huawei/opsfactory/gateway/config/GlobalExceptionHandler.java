@@ -4,10 +4,6 @@
 
 package com.huawei.opsfactory.gateway.config;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import com.huawei.opsfactory.common.exception.ApiCallException;
 import com.huawei.opsfactory.common.exception.AuthException;
 import com.huawei.opsfactory.gateway.controller.SessionErrorResponseException;
@@ -15,12 +11,17 @@ import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.ConflictException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;

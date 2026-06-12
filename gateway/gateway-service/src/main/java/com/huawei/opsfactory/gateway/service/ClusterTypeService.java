@@ -6,11 +6,10 @@ package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
-
-import jakarta.annotation.PostConstruct;
-
 import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
+
+import jakarta.annotation.PostConstruct;
 
 import org.springframework.stereotype.Service;
 

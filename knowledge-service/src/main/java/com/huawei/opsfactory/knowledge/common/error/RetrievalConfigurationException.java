@@ -6,6 +6,7 @@ package com.huawei.opsfactory.knowledge.common.error;
 
 /**
  * The RetrievalConfigurationException.
+ *
  * @author x00000000
  * @since 2026-05-26
  */
