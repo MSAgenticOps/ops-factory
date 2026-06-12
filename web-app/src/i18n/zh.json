@@ -2984,7 +2984,7 @@
     "warning": "亚健康",
     "orange": "异常",
     "critical": "严重",
-    "workspaceSubtitle": "统一查看业务健康状态和智能运维知识图谱。",
+    "workspaceSubtitle": "统一查看智能运维知识图谱。",
     "workspaceTabsLabel": "智能运维工作台页签",
     "workspaceTabs": {
       "overview": "业务健康",
