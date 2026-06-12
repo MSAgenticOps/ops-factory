@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.common.aop;
 
+import com.huawei.opsfactory.common.config.CommonProperties;
 import com.huawei.opsfactory.common.exception.AuthException;
 
 import org.apache.commons.lang3.StringUtils;
@@ -16,8 +17,6 @@ import org.aspectj.lang.annotation.Aspect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Component;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,21 +34,24 @@ import java.util.Base64;
  */
 @Aspect
 @Component
-@PropertySource(value = "classpath:ops-common-default.properties", ignoreResourceNotFound = true)
 public class BasicAuthAspect {
     private static final Logger logger = LoggerFactory.getLogger(BasicAuthAspect.class);
 
     private final HttpServletRequest request;
 
-    public BasicAuthAspect(@Autowired(required = false) HttpServletRequest request) {
+    private final CommonProperties commonProperties;
+
+    /**
+     * Constructs a new BasicAuthAspect with the given request and common properties.
+     *
+     * @param request the HTTP servlet request, may be null in non-servlet environments
+     * @param commonProperties the common properties containing authentication credentials
+     */
+    public BasicAuthAspect(@Autowired(required = false) HttpServletRequest request,
+                           @Autowired CommonProperties commonProperties) {
         this.request = request;
+        this.commonProperties = commonProperties;
     }
-
-    @Value("${common.aop.machine.username}")
-    private String configUserName;
-
-    @Value("${common.aop.machine.password}")
-    private String configPassword;
 
     /**
      * Basic authentication advice.
@@ -61,7 +63,7 @@ public class BasicAuthAspect {
      * @return the result of method execution
      * @throws Throwable if authentication fails or an error occurs
      */
-    @Around("@annotation(BasicAuth)")
+    @Around("@annotation(com.huawei.opsfactory.common.aop.BasicAuth)")
     public Object basicAuth(ProceedingJoinPoint pjp) throws Throwable {
         logger.debug("BasicAuth triggered for: {}", pjp.getSignature().getName());
         String authHeader = null;
@@ -96,12 +98,14 @@ public class BasicAuthAspect {
                     String password = usernamePassword[1];
 
                     // 用户名和密码的验证
-                    if (StringUtils.isEmpty(configUserName) || StringUtils.isEmpty(configPassword)) {
+                    if (StringUtils.isEmpty(commonProperties.getUserName()) ||
+                        StringUtils.isEmpty(commonProperties.getPassword())) {
                         logger.warn("Machine authentication not configured, rejecting @BasicAuth request");
                         throw new AuthException("Machine authentication not configured");
                     }
 
-                    if (configUserName.equals(userName) && configPassword.equals(password)) {
+                    if (commonProperties.getUserName().equals(userName) &&
+                        commonProperties.getPassword().equals(password)) {
                         // 认证通过
                         logger.debug("Basic authentication successful");
                         return pjp.proceed();
