@@ -97,8 +97,8 @@ public class CallChainBuilder {
         tree.setFlows(flows);
         tree.setTotalCount(totalCount);
 
-        log.info("Built call chain tree: chainType={}, flows={}, totalCount={}, mode={}",
-            chainType, flows.size(), totalCount, mode);
+        log.info("Built call chain tree: chainType={}, flows={}, totalCount={}, mode={}", chainType, flows.size(),
+            totalCount, mode);
 
         return tree;
     }

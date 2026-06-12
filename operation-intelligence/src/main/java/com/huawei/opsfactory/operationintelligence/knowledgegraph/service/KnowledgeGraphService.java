@@ -270,10 +270,8 @@ public class KnowledgeGraphService {
             GraphSnapshot snapshot = getRequiredSnapshot(resolvedId, envCode);
             GraphEntity existing = getEntity(resolvedId, envCode, entityId);
             GraphEntity updated = mergeEntity(existing, request, entityId);
-            persistSnapshotModification(snapshot, next ->
-                next.setEntities(snapshot.getEntities().stream()
-                    .map(e -> entityId.equals(e.getId()) ? updated : e)
-                    .toList()));
+            persistSnapshotModification(snapshot, next -> next.setEntities(
+                snapshot.getEntities().stream().map(e -> entityId.equals(e.getId()) ? updated : e).toList()));
             return updated;
         });
     }
@@ -295,15 +293,13 @@ public class KnowledgeGraphService {
             GraphSnapshot snapshot = getRequiredSnapshot(resolvedId, envCode);
             getEntity(resolvedId, envCode, entityId);
             persistSnapshotModification(snapshot, next -> {
-                next.setEntities(snapshot.getEntities().stream()
-                    .filter(e -> !entityId.equals(e.getId()))
-                    .toList());
-                next.setRelations(snapshot.getRelations().stream()
+                next.setEntities(snapshot.getEntities().stream().filter(e -> !entityId.equals(e.getId())).toList());
+                next.setRelations(snapshot.getRelations()
+                    .stream()
                     .filter(r -> !entityId.equals(r.getFrom()) && !entityId.equals(r.getTo()))
                     .toList());
-                next.setObservations(snapshot.getObservations().stream()
-                    .filter(o -> !entityId.equals(o.getEntityId()))
-                    .toList());
+                next.setObservations(
+                    snapshot.getObservations().stream().filter(o -> !entityId.equals(o.getEntityId())).toList());
             });
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("entityId", entityId);

@@ -49,6 +49,17 @@ public class CallChainStatistics {
     }
 
     /**
+     * Resolves the service name for a flow node, used for grouping.
+     *
+     * @param node the flow node
+     * @return the resolved service name
+     */
+    private static String resolveServiceName(FlowNode node) {
+        return node.getServiceName() != null ? node.getServiceName()
+            : node.getUrl() != null ? "URL:" + node.getUrl() : "UNKNOWN";
+    }
+
+    /**
      * Calculate statistics for a call flow.
      *
      * @param flow the call flow
@@ -285,72 +296,6 @@ public class CallChainStatistics {
     }
 
     /**
-     * Accumulator for IP statistics calculation.
-     */
-    private static class IpStatAccumulator {
-        private final String ip;
-
-        private long totalCalls = 0;
-
-        private long successCalls = 0;
-
-        private long totalCost = 0;
-
-        private long costCount = 0;
-
-        private long minCost = Long.MAX_VALUE;
-
-        private long maxCost = Long.MIN_VALUE;
-
-        IpStatAccumulator(String ip) {
-            this.ip = ip;
-        }
-
-        void accumulate(long calls, long success, Long avgCost, Long min, Long max) {
-            totalCalls += calls;
-            successCalls += success;
-            if (avgCost != null) {
-                totalCost += avgCost * calls;
-                costCount += calls;
-            }
-            if (min != null) {
-                this.minCost = Math.min(this.minCost, min);
-            }
-            if (max != null) {
-                this.maxCost = Math.max(this.maxCost, max);
-            }
-        }
-
-        void accumulateCost(Long cost) {
-            if (cost != null) {
-                totalCost += cost;
-                costCount++;
-                minCost = Math.min(minCost, cost);
-                maxCost = Math.max(maxCost, cost);
-            }
-        }
-
-        IpStat toIpStat() {
-            IpStat stat = new IpStat();
-            stat.setIp(ip);
-            stat.setCallCount(totalCalls);
-            stat.setSuccessCount(successCalls);
-
-            if (totalCalls > 0) {
-                stat.setSuccessPercent(successCalls * 100.0 / totalCalls);
-            }
-
-            if (costCount > 0) {
-                stat.setAvgCost(totalCost / costCount);
-                stat.setMinCost(minCost);
-                stat.setMaxCost(maxCost);
-            }
-
-            return stat;
-        }
-    }
-
-    /**
      * Merge flows by service name (service mode).
      * Merges flows that have the same node sequence after service-level node merging.
      *
@@ -359,9 +304,7 @@ public class CallChainStatistics {
      */
     public List<CallFlow> mergeFlowsByService(List<CallFlow> flows) {
         // Step 1: Merge nodes within each flow by serviceName
-        List<CallFlow> mergedNodeFlows = flows.stream()
-            .map(this::mergeNodesByServiceName)
-            .collect(Collectors.toList());
+        List<CallFlow> mergedNodeFlows = flows.stream().map(this::mergeNodesByServiceName).collect(Collectors.toList());
 
         // Step 2: Group flows by node sequence signature
         Map<String, List<CallFlow>> byNodeSequence = new LinkedHashMap<>();
@@ -457,22 +400,16 @@ public class CallChainStatistics {
         }
 
         // Merge operationNames (deduplicate and join with comma)
-        Set<String> opNames = serviceNodes.stream()
-            .map(FlowNode::getOperationName)
-            .filter(Objects::nonNull)
-            .collect(Collectors.toSet());
+        Set<String> opNames =
+            serviceNodes.stream().map(FlowNode::getOperationName).filter(Objects::nonNull).collect(Collectors.toSet());
         if (!opNames.isEmpty()) {
             merged.setOperationName(String.join(",", opNames));
         }
 
         // Collect all unique seqNos from merged nodes and select minimum
-        Set<String> seqNos = serviceNodes.stream()
-            .map(FlowNode::getSeqNo)
-            .collect(Collectors.toSet());
+        Set<String> seqNos = serviceNodes.stream().map(FlowNode::getSeqNo).collect(Collectors.toSet());
         if (!seqNos.isEmpty()) {
-            String minSeqNo = seqNos.stream()
-                .min(SeqNoComparator::compareSeqNo)
-                .orElse(seqNos.iterator().next());
+            String minSeqNo = seqNos.stream().min(SeqNoComparator::compareSeqNo).orElse(seqNos.iterator().next());
             merged.setSeqNo(minSeqNo);
         }
 
@@ -489,12 +426,9 @@ public class CallChainStatistics {
         merged.setClusterTypeId(mergeClusterTypeIdsFromNodes(serviceNodes));
 
         // Merge success statistics
-        long totalCalls = serviceNodes.stream()
-            .mapToLong(n -> n.getCallCount() != null ? n.getCallCount() : 0)
-            .sum();
-        long totalSuccess = serviceNodes.stream()
-            .mapToLong(n -> n.getSuccessCount() != null ? n.getSuccessCount() : 0)
-            .sum();
+        long totalCalls = serviceNodes.stream().mapToLong(n -> n.getCallCount() != null ? n.getCallCount() : 0).sum();
+        long totalSuccess =
+            serviceNodes.stream().mapToLong(n -> n.getSuccessCount() != null ? n.getSuccessCount() : 0).sum();
         merged.setCallCount(totalCalls);
         merged.setSuccessCount(totalSuccess);
         if (totalCalls > 0) {
@@ -534,34 +468,26 @@ public class CallChainStatistics {
         }
 
         // Merge cost statistics
-        List<Long> avgCosts = flows.stream()
-            .map(CallFlow::getAvgCost)
-            .filter(Objects::nonNull)
-            .collect(Collectors.toList());
+        List<Long> avgCosts =
+            flows.stream().map(CallFlow::getAvgCost).filter(Objects::nonNull).collect(Collectors.toList());
         if (!avgCosts.isEmpty()) {
             merged.setAvgCost(avgCosts.stream().mapToLong(Long::longValue).sum() / avgCosts.size());
         }
 
-        List<Long> minCosts = flows.stream()
-            .map(CallFlow::getMinCost)
-            .filter(Objects::nonNull)
-            .collect(Collectors.toList());
+        List<Long> minCosts =
+            flows.stream().map(CallFlow::getMinCost).filter(Objects::nonNull).collect(Collectors.toList());
         if (!minCosts.isEmpty()) {
             merged.setMinCost(minCosts.stream().min(Long::compare).orElse(null));
         }
 
-        List<Long> maxCosts = flows.stream()
-            .map(CallFlow::getMaxCost)
-            .filter(Objects::nonNull)
-            .collect(Collectors.toList());
+        List<Long> maxCosts =
+            flows.stream().map(CallFlow::getMaxCost).filter(Objects::nonNull).collect(Collectors.toList());
         if (!maxCosts.isEmpty()) {
             merged.setMaxCost(maxCosts.stream().max(Long::compare).orElse(null));
         }
 
         // Merge nodes by service name again (across flows)
-        List<FlowNode> allNodes = flows.stream()
-            .flatMap(flow -> flow.getNodes().stream())
-            .collect(Collectors.toList());
+        List<FlowNode> allNodes = flows.stream().flatMap(flow -> flow.getNodes().stream()).collect(Collectors.toList());
 
         Map<String, List<FlowNode>> byServiceName = new LinkedHashMap<>();
         for (FlowNode node : allNodes) {
@@ -585,8 +511,8 @@ public class CallChainStatistics {
      */
     private String generateNodeSequenceSignature(List<FlowNode> nodes) {
         String sequence = nodes.stream()
-            .map(node -> node.getServiceName() != null ? node.getServiceName() :
-                          node.getUrl() != null ? node.getUrl() : "UNKNOWN")
+            .map(node -> node.getServiceName() != null ? node.getServiceName()
+                : node.getUrl() != null ? node.getUrl() : "UNKNOWN")
             .collect(Collectors.joining("->"));
 
         // Use SHA-256 hash for fixed-length signature
@@ -615,14 +541,12 @@ public class CallChainStatistics {
             for (IpStat ipStat : node.getIpList()) {
                 String ip = ipStat.getIp();
                 IpStatAccumulator acc = byIp.computeIfAbsent(ip, k -> new IpStatAccumulator(ip));
-                acc.accumulate(ipStat.getCallCount(), ipStat.getSuccessCount(),
-                    ipStat.getAvgCost(), ipStat.getMinCost(), ipStat.getMaxCost());
+                acc.accumulate(ipStat.getCallCount(), ipStat.getSuccessCount(), ipStat.getAvgCost(),
+                    ipStat.getMinCost(), ipStat.getMaxCost());
             }
         }
 
-        return byIp.values().stream()
-            .map(IpStatAccumulator::toIpStat)
-            .collect(Collectors.toList());
+        return byIp.values().stream().map(IpStatAccumulator::toIpStat).collect(Collectors.toList());
     }
 
     /**
@@ -639,9 +563,7 @@ public class CallChainStatistics {
             for (FlowNode node : nodes) {
                 if (node.getAvgCost() != null && node.getIpList() != null) {
                     // Calculate total calls from IP statistics
-                    long nodeCalls = node.getIpList().stream()
-                        .mapToLong(IpStat::getCallCount)
-                        .sum();
+                    long nodeCalls = node.getIpList().stream().mapToLong(IpStat::getCallCount).sum();
                     totalCost += node.getAvgCost() * nodeCalls;
                     totalCount += nodeCalls;
                 }
@@ -696,14 +618,68 @@ public class CallChainStatistics {
     }
 
     /**
-     * Resolves the service name for a flow node, used for grouping.
-     *
-     * @param node the flow node
-     * @return the resolved service name
+     * Accumulator for IP statistics calculation.
      */
-    private static String resolveServiceName(FlowNode node) {
-        return node.getServiceName() != null ? node.getServiceName() :
-            node.getUrl() != null ? "URL:" + node.getUrl() :
-            "UNKNOWN";
+    private static class IpStatAccumulator {
+        private final String ip;
+
+        private long totalCalls = 0;
+
+        private long successCalls = 0;
+
+        private long totalCost = 0;
+
+        private long costCount = 0;
+
+        private long minCost = Long.MAX_VALUE;
+
+        private long maxCost = Long.MIN_VALUE;
+
+        IpStatAccumulator(String ip) {
+            this.ip = ip;
+        }
+
+        void accumulate(long calls, long success, Long avgCost, Long min, Long max) {
+            totalCalls += calls;
+            successCalls += success;
+            if (avgCost != null) {
+                totalCost += avgCost * calls;
+                costCount += calls;
+            }
+            if (min != null) {
+                this.minCost = Math.min(this.minCost, min);
+            }
+            if (max != null) {
+                this.maxCost = Math.max(this.maxCost, max);
+            }
+        }
+
+        void accumulateCost(Long cost) {
+            if (cost != null) {
+                totalCost += cost;
+                costCount++;
+                minCost = Math.min(minCost, cost);
+                maxCost = Math.max(maxCost, cost);
+            }
+        }
+
+        IpStat toIpStat() {
+            IpStat stat = new IpStat();
+            stat.setIp(ip);
+            stat.setCallCount(totalCalls);
+            stat.setSuccessCount(successCalls);
+
+            if (totalCalls > 0) {
+                stat.setSuccessPercent(successCalls * 100.0 / totalCalls);
+            }
+
+            if (costCount > 0) {
+                stat.setAvgCost(totalCost / costCount);
+                stat.setMinCost(minCost);
+                stat.setMaxCost(maxCost);
+            }
+
+            return stat;
+        }
     }
 }

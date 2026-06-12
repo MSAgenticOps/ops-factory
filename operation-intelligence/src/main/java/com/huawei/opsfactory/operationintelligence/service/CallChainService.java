@@ -88,7 +88,8 @@ public class CallChainService {
      * @return the call chain tree
      */
     public CallChainTree queryCallChain(QueryCallChainRequest request) {
-        CallChainTree mockTree = loadMockTreeIfConfigured(toConditionMapList(request.getCondition()), request.getStartTime(), request.getEndTime());
+        CallChainTree mockTree = loadMockTreeIfConfigured(toConditionMapList(request.getCondition()),
+            request.getStartTime(), request.getEndTime());
         if (mockTree != null) {
             return mockTree;
         }
@@ -121,9 +122,8 @@ public class CallChainService {
         String conditionKey = config != null ? config.getConditionKey() : conditions.get(0).get("conditionKey");
 
         // Fetch entry logs (seqNo=1) with pagination and time splitting
-        List<TraceLogRecord> entryLogs =
-            fetchEntryLogsWithSplit(request.getSolutionType(), request.getSolutionId(), chainType, conditionKey, conditions,
-                config, request.getStartTime(), request.getEndTime());
+        List<TraceLogRecord> entryLogs = fetchEntryLogsWithSplit(request.getSolutionType(), request.getSolutionId(),
+            chainType, conditionKey, conditions, config, request.getStartTime(), request.getEndTime());
 
         if (entryLogs.isEmpty()) {
             log.info("No entry logs found for query");
@@ -141,9 +141,8 @@ public class CallChainService {
         int querySize = properties.getCallChain().getQuerySize();
         for (String traceId : traceIds) {
             log.debug("Fetching logs for TraceID: {}", traceId);
-            List<TraceLogRecord> traceLogs =
-                dvClient.fetchByTraceId(request.getSolutionType(), request.getSolutionId(), traceId,
-                    request.getStartTime(), request.getEndTime(), querySize);
+            List<TraceLogRecord> traceLogs = dvClient.fetchByTraceId(request.getSolutionType(), request.getSolutionId(),
+                traceId, request.getStartTime(), request.getEndTime(), querySize);
             allLogs.addAll(traceLogs);
         }
 
@@ -154,8 +153,8 @@ public class CallChainService {
         String conditionValue = primaryCondition.get("conditionValue");
 
         // Build call chain tree
-        CallChainTree tree = chainBuilder.build(chainType, conditionKey, conditionValue, allLogs, allLogs.size(),
-            request.getMode());
+        CallChainTree tree =
+            chainBuilder.build(chainType, conditionKey, conditionValue, allLogs, allLogs.size(), request.getMode());
 
         // Set conditions
         tree.setConditions(buildTreeConditions(conditions));
@@ -393,8 +392,7 @@ public class CallChainService {
      */
     private Path resolveMockQueryFile(String configuredFile) {
         Path configuredPath = Path.of(configuredFile);
-        Path resolved = configuredPath.isAbsolute()
-            ? configuredPath.normalize()
+        Path resolved = configuredPath.isAbsolute() ? configuredPath.normalize()
             : properties.getConfigDirectory().resolve(configuredPath).normalize();
         if (!Files.isRegularFile(resolved)) {
             throw new IllegalStateException("Mock call chain file does not exist: " + resolved);

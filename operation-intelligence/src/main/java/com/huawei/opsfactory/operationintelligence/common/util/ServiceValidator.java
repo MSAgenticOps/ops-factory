@@ -15,7 +15,8 @@ import org.springframework.web.server.ResponseStatusException;
  */
 public final class ServiceValidator {
 
-    private ServiceValidator() {}
+    private ServiceValidator() {
+    }
 
     /**
      * Requires that a text value is non-null and non-blank.

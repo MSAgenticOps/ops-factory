@@ -266,7 +266,8 @@ public class InMemoryGraphStore {
                 return Optional.empty();
             }
             Set<String> selectedEntities = collectEntityIds(envGraph, existingSeeds, maxHops, relationTypes);
-            GraphSnapshot result = buildSubgraphSnapshot(envGraph, ontologyId, envCode, selectedEntities, relationTypes);
+            GraphSnapshot result =
+                buildSubgraphSnapshot(envGraph, ontologyId, envCode, selectedEntities, relationTypes);
             result.setGeneratedAt(envGraph.generatedAt);
             result.setSourceSystem(envGraph.sourceSystem);
             result.setImportMode("UPSERT");
@@ -319,7 +320,8 @@ public class InMemoryGraphStore {
         return collectEntityIdsBfs(envGraph, Set.of(startId), maxHops, null);
     }
 
-    private Set<String> collectEntityIds(EnvGraph envGraph, Set<String> startIds, int maxHops, Set<String> relationTypes) {
+    private Set<String> collectEntityIds(EnvGraph envGraph, Set<String> startIds, int maxHops,
+        Set<String> relationTypes) {
         return collectEntityIdsBfs(envGraph, startIds, maxHops, relationTypes);
     }
 
