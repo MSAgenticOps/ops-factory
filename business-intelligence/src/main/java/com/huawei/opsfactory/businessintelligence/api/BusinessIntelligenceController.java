@@ -67,6 +67,27 @@ public class BusinessIntelligenceController {
             .body(new ByteArrayResource(bytes));
     }
 
+    @GetMapping("/export-enhanced.xlsx")
+    public ResponseEntity<?> exportEnhancedWorkbook(
+        @RequestParam(value = "language", defaultValue = "zh") String language,
+        @RequestParam(value = "startDate", required = false) String startDate,
+        @RequestParam(value = "endDate", required = false) String endDate
+    ) {
+        try {
+            String normalizedLang = "en".equalsIgnoreCase(language) ? "en" : "zh";
+            byte[] bytes = businessIntelligenceService.exportEnhancedWorkbook(normalizedLang, startDate, endDate);
+            String langSuffix = "zh".equals(normalizedLang) ? "CN" : "EN";
+            String timestamp = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(Instant.now().atZone(java.time.ZoneId.systemDefault()));
+            String filename = "BI_Dashboard_Export_" + timestamp + "_" + langSuffix + ".xlsx";
+            return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(new ByteArrayResource(bytes));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", "Export failed: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/metrics/{domain}")
     public ResponseEntity<?> getMetrics(
         @PathVariable("domain") String domain,

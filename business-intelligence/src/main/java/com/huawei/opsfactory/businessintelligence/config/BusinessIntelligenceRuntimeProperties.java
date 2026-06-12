@@ -49,10 +49,19 @@ public class BusinessIntelligenceRuntimeProperties {
         runtime.setCacheEnabled(cacheEnabled);
     }
 
+    public String getExportBiUrl() {
+        return runtime.getExportBiUrl();
+    }
+
+    public void setExportBiUrl(String exportBiUrl) {
+        runtime.setExportBiUrl(exportBiUrl);
+    }
+
     public static class Runtime {
 
         private String baseDir = "./data";
         private boolean cacheEnabled = true;
+        private String exportBiUrl = "";
 
         public String getBaseDir() {
             return baseDir;
@@ -68,6 +77,14 @@ public class BusinessIntelligenceRuntimeProperties {
 
         public void setCacheEnabled(boolean cacheEnabled) {
             this.cacheEnabled = cacheEnabled;
+        }
+
+        public String getExportBiUrl() {
+            return exportBiUrl;
+        }
+
+        public void setExportBiUrl(String exportBiUrl) {
+            this.exportBiUrl = exportBiUrl;
         }
     }
 
