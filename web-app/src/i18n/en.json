@@ -2985,7 +2985,7 @@
     "warning": "Warning",
     "orange": "Orange",
     "critical": "Critical",
-    "workspaceSubtitle": "View business health and the operation knowledge graph in one workspace.",
+    "workspaceSubtitle": "View the operation knowledge graph in one workspace.",
     "workspaceTabsLabel": "Operation intelligence workspace tabs",
     "workspaceTabs": {
       "overview": "Business Health",
