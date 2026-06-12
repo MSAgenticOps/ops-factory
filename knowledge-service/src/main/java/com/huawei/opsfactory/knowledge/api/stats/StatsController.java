@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * The StatsController.
+ *
  * @author x00000000
  * @since 2026-05-26
  */
@@ -38,15 +39,8 @@ public class StatsController {
         return facade.overviewStats();
     }
 
-    public record OverviewStatsResponse(
-        int sourceCount,
-        int documentCount,
-        int indexedDocumentCount,
-        int failedDocumentCount,
-        int processingDocumentCount,
-        int chunkCount,
-        int userEditedChunkCount,
-        int runningJobCount
-    ) {
+    public record OverviewStatsResponse(int sourceCount, int documentCount, int indexedDocumentCount,
+        int failedDocumentCount, int processingDocumentCount, int chunkCount, int userEditedChunkCount,
+        int runningJobCount) {
     }
 }

@@ -16,6 +16,7 @@ import java.util.Optional;
 
 /**
  * The JobRepository.
+ *
  * @author x00000000
  * @since 2026-05-26
  */
@@ -24,6 +25,7 @@ import java.util.Optional;
 public class JobRepository {
 
     private final JdbcTemplate jdbcTemplate;
+
     private final RowMapper<JobRecord> mapper = this::map;
 
     public JobRepository(JdbcTemplate jdbcTemplate) {
@@ -31,37 +33,32 @@ public class JobRepository {
     }
 
     public void insert(JobRecord record) {
-        jdbcTemplate.update(
-            """
-                insert into ingestion_job (
-                    id, job_type, source_id, document_id, status, progress, stage, message, created_by,
-                    total_documents, processed_documents, success_documents, failed_documents,
-                    current_document_id, current_document_name, error_summary,
-                    started_at, finished_at, created_at, updated_at
-                ) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                """,
-            record.id(), record.jobType(), record.sourceId(), record.documentId(), record.status(), record.progress(),
-            record.stage(), record.message(), record.createdBy(), record.totalDocuments(), record.processedDocuments(),
-            record.successDocuments(), record.failedDocuments(), record.currentDocumentId(), record.currentDocumentName(),
-            record.errorSummary(), stringify(record.startedAt()), stringify(record.finishedAt()), record.createdAt().toString(),
-            record.updatedAt().toString()
-        );
+        jdbcTemplate.update("""
+            insert into ingestion_job (
+                id, job_type, source_id, document_id, status, progress, stage, message, created_by,
+                total_documents, processed_documents, success_documents, failed_documents,
+                current_document_id, current_document_name, error_summary,
+                started_at, finished_at, created_at, updated_at
+            ) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """, record.id(), record.jobType(), record.sourceId(), record.documentId(), record.status(),
+            record.progress(), record.stage(), record.message(), record.createdBy(), record.totalDocuments(),
+            record.processedDocuments(), record.successDocuments(), record.failedDocuments(),
+            record.currentDocumentId(), record.currentDocumentName(), record.errorSummary(),
+            stringify(record.startedAt()), stringify(record.finishedAt()), record.createdAt().toString(),
+            record.updatedAt().toString());
     }
 
     public void update(JobRecord record) {
-        jdbcTemplate.update(
-            """
-                update ingestion_job set
-                    status=?, progress=?, stage=?, message=?, created_by=?, total_documents=?,
-                    processed_documents=?, success_documents=?, failed_documents=?, current_document_id=?,
-                    current_document_name=?, error_summary=?, started_at=?, finished_at=?, updated_at=?
-                where id=?
-                """,
-            record.status(), record.progress(), record.stage(), record.message(), record.createdBy(), record.totalDocuments(),
-            record.processedDocuments(), record.successDocuments(), record.failedDocuments(), record.currentDocumentId(),
-            record.currentDocumentName(), record.errorSummary(), stringify(record.startedAt()), stringify(record.finishedAt()),
-            record.updatedAt().toString(), record.id()
-        );
+        jdbcTemplate.update("""
+            update ingestion_job set
+                status=?, progress=?, stage=?, message=?, created_by=?, total_documents=?,
+                processed_documents=?, success_documents=?, failed_documents=?, current_document_id=?,
+                current_document_name=?, error_summary=?, started_at=?, finished_at=?, updated_at=?
+            where id=?
+            """, record.status(), record.progress(), record.stage(), record.message(), record.createdBy(),
+            record.totalDocuments(), record.processedDocuments(), record.successDocuments(), record.failedDocuments(),
+            record.currentDocumentId(), record.currentDocumentName(), record.errorSummary(),
+            stringify(record.startedAt()), stringify(record.finishedAt()), record.updatedAt().toString(), record.id());
     }
 
     public List<JobRecord> findAll() {
@@ -75,9 +72,7 @@ public class JobRepository {
     public Optional<JobRecord> findLatestCompletedBySourceId(String sourceId) {
         return jdbcTemplate.query(
             "select * from ingestion_job where source_id = ? and finished_at is not null order by finished_at desc limit 1",
-            mapper,
-            sourceId
-        ).stream().findFirst();
+            mapper, sourceId).stream().findFirst();
     }
 
     public void deleteBySourceId(String sourceId) {
@@ -94,55 +89,22 @@ public class JobRepository {
     }
 
     private JobRecord map(ResultSet rs, int rowNum) throws SQLException {
-        return new JobRecord(
-            rs.getString("id"),
-            rs.getString("job_type"),
-            rs.getString("source_id"),
-            rs.getString("document_id"),
-            rs.getString("status"),
-            rs.getInt("progress"),
-            rs.getString("stage"),
-            rs.getString("message"),
-            rs.getString("created_by"),
-            rs.getInt("total_documents"),
-            rs.getInt("processed_documents"),
-            rs.getInt("success_documents"),
-            rs.getInt("failed_documents"),
-            rs.getString("current_document_id"),
-            rs.getString("current_document_name"),
-            rs.getString("error_summary"),
-            parse(rs.getString("started_at")),
-            parse(rs.getString("finished_at")),
-            Instant.parse(rs.getString("created_at")),
-            Instant.parse(rs.getString("updated_at"))
-        );
+        return new JobRecord(rs.getString("id"), rs.getString("job_type"), rs.getString("source_id"),
+            rs.getString("document_id"), rs.getString("status"), rs.getInt("progress"), rs.getString("stage"),
+            rs.getString("message"), rs.getString("created_by"), rs.getInt("total_documents"),
+            rs.getInt("processed_documents"), rs.getInt("success_documents"), rs.getInt("failed_documents"),
+            rs.getString("current_document_id"), rs.getString("current_document_name"), rs.getString("error_summary"),
+            parse(rs.getString("started_at")), parse(rs.getString("finished_at")),
+            Instant.parse(rs.getString("created_at")), Instant.parse(rs.getString("updated_at")));
     }
 
     private Instant parse(String value) {
         return value == null ? null : Instant.parse(value);
     }
 
-    public record JobRecord(
-        String id,
-        String jobType,
-        String sourceId,
-        String documentId,
-        String status,
-        int progress,
-        String stage,
-        String message,
-        String createdBy,
-        int totalDocuments,
-        int processedDocuments,
-        int successDocuments,
-        int failedDocuments,
-        String currentDocumentId,
-        String currentDocumentName,
-        String errorSummary,
-        Instant startedAt,
-        Instant finishedAt,
-        Instant createdAt,
-        Instant updatedAt
-    ) {
+    public record JobRecord(String id, String jobType, String sourceId, String documentId, String status, int progress,
+        String stage, String message, String createdBy, int totalDocuments, int processedDocuments,
+        int successDocuments, int failedDocuments, String currentDocumentId, String currentDocumentName,
+        String errorSummary, Instant startedAt, Instant finishedAt, Instant createdAt, Instant updatedAt) {
     }
 }

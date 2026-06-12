@@ -135,7 +135,8 @@ class KnowledgeMaintenanceIntegrationTest extends KnowledgeApiIntegrationTestSup
                 insert into ingestion_job (
                     id, job_type, source_id, document_id, status, progress, stage, message, created_by,
                     total_documents, processed_documents, success_documents, failed_documents,
-                    current_document_id, current_document_name, error_summary, started_at, finished_at, created_at, updated_at
+                    current_document_id, current_document_name, error_summary, started_at,
+                    finished_at, created_at, updated_at
                 ) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
             jobId, "SOURCE_REBUILD", sourceId, null, "FAILED", 100, "COMPLETED",
@@ -143,7 +144,9 @@ class KnowledgeMaintenanceIntegrationTest extends KnowledgeApiIntegrationTestSup
             "2026-03-30T05:00:00Z", "2026-03-30T05:10:00Z", "2026-03-30T05:00:00Z", "2026-03-30T05:10:00Z");
         jdbcTemplate.update(
             """
-                insert into maintenance_job_failure (id, job_id, source_id, document_id, document_name, stage, error_code, message, finished_at)
+                insert into maintenance_job_failure (
+                    id, job_id, source_id, document_id, document_name, stage, error_code,
+                    message, finished_at)
                 values (?,?,?,?,?,?,?,?,?)
                 """,
             "mjf_001", jobId, sourceId, null, "broken.pdf", "INDEXING", "INDEX_WRITE_FAILED", "索引写入失败",

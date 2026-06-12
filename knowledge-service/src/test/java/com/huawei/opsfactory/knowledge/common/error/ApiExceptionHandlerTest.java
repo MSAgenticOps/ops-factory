@@ -17,10 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 class ApiExceptionHandlerTest {
 
-    private final MockMvc mockMvc = MockMvcBuilders
-        .standaloneSetup(new FailingController())
-        .setControllerAdvice(new ApiExceptionHandler())
-        .build();
+    private final MockMvc mockMvc =
+        MockMvcBuilders.standaloneSetup(new FailingController()).setControllerAdvice(new ApiExceptionHandler()).build();
 
     @Test
     void shouldMapRetrievalConfigurationExceptionToServerErrorInsteadOfNotFound() throws Exception {

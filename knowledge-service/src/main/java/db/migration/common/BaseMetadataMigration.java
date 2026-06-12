@@ -21,7 +21,8 @@ abstract class BaseMetadataMigration extends BaseJavaMigration {
         }
     }
 
-    protected void executeIfMissing(Connection connection, String tableName, String columnName, String sql) throws SQLException {
+    protected void executeIfMissing(Connection connection, String tableName, String columnName, String sql)
+        throws SQLException {
         if (hasColumn(connection, tableName, columnName)) {
             return;
         }

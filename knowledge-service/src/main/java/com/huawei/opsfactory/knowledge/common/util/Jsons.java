@@ -14,6 +14,7 @@ import java.util.Map;
 
 /**
  * The Jsons.
+ *
  * @author x00000000
  * @since 2026-05-26
  */
@@ -36,8 +37,7 @@ public final class Jsons {
             return Collections.emptyList();
         }
         try {
-            return objectMapper.readValue(value, new TypeReference<>() {
-            });
+            return objectMapper.readValue(value, new TypeReference<>() {});
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to deserialize json list", e);
         }
@@ -48,8 +48,7 @@ public final class Jsons {
             return Collections.emptyMap();
         }
         try {
-            return objectMapper.readValue(value, new TypeReference<>() {
-            });
+            return objectMapper.readValue(value, new TypeReference<>() {});
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to deserialize json map", e);
         }

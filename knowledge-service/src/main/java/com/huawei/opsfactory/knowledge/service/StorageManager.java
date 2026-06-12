@@ -18,6 +18,7 @@ import java.util.stream.Stream;
 
 /**
  * The StorageManager.
+ *
  * @author x00000000
  * @since 2026-05-26
  */
@@ -99,14 +100,13 @@ public class StorageManager {
                 return;
             }
             try (Stream<Path> walk = Files.walk(path)) {
-                walk.sorted(Comparator.reverseOrder())
-                    .forEach(current -> {
-                        try {
-                            Files.deleteIfExists(current);
-                        } catch (IOException e) {
-                            throw new IllegalStateException("Failed to delete " + current, e);
-                        }
-                    });
+                walk.sorted(Comparator.reverseOrder()).forEach(current -> {
+                    try {
+                        Files.deleteIfExists(current);
+                    } catch (IOException e) {
+                        throw new IllegalStateException("Failed to delete " + current, e);
+                    }
+                });
             }
         } catch (IOException e) {
             throw new IllegalStateException("Failed to delete path " + path, e);

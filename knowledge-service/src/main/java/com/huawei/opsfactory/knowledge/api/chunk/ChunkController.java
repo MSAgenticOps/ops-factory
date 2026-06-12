@@ -23,6 +23,7 @@ import java.util.List;
 
 /**
  * The ChunkController.
+ *
  * @author x00000000
  * @since 2026-05-26
  */
@@ -44,12 +45,9 @@ public class ChunkController {
     }
 
     @GetMapping("/chunks")
-    public PageResponse<ChunkSummary> listChunks(
-        @RequestParam(required = false) String sourceId,
-        @RequestParam(required = false) String documentId,
-        @RequestParam(defaultValue = "1") int page,
-        @RequestParam(defaultValue = "20") int pageSize
-    ) {
+    public PageResponse<ChunkSummary> listChunks(@RequestParam(required = false) String sourceId,
+        @RequestParam(required = false) String documentId, @RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "20") int pageSize) {
         return facade.listChunks(page, pageSize, sourceId, documentId);
     }
 
@@ -59,17 +57,20 @@ public class ChunkController {
     }
 
     @PostMapping("/documents/{documentId}/chunks")
-    public ChunkMutationResponse createChunk(@PathVariable("documentId") String documentId, @RequestBody CreateChunkRequest request) {
+    public ChunkMutationResponse createChunk(@PathVariable("documentId") String documentId,
+        @RequestBody CreateChunkRequest request) {
         return facade.createChunk(documentId, request);
     }
 
     @PatchMapping("/chunks/{chunkId}")
-    public ChunkMutationResponse updateChunk(@PathVariable("chunkId") String chunkId, @RequestBody UpdateChunkRequest request) {
+    public ChunkMutationResponse updateChunk(@PathVariable("chunkId") String chunkId,
+        @RequestBody UpdateChunkRequest request) {
         return facade.updateChunk(chunkId, request);
     }
 
     @PatchMapping("/chunks/{chunkId}/keywords")
-    public ChunkKeywordsResponse updateChunkKeywords(@PathVariable("chunkId") String chunkId, @RequestBody ChunkKeywordsRequest request) {
+    public ChunkKeywordsResponse updateChunkKeywords(@PathVariable("chunkId") String chunkId,
+        @RequestBody ChunkKeywordsRequest request) {
         return facade.updateChunkKeywords(chunkId, request.keywords());
     }
 
@@ -79,7 +80,8 @@ public class ChunkController {
     }
 
     @PostMapping("/documents/{documentId}/chunks:reorder")
-    public ReorderChunksResponse reorderChunks(@PathVariable("documentId") String documentId, @RequestBody ReorderChunksRequest request) {
+    public ReorderChunksResponse reorderChunks(@PathVariable("documentId") String documentId,
+        @RequestBody ReorderChunksRequest request) {
         return facade.reorderChunks(documentId, request.items());
     }
 
@@ -88,87 +90,33 @@ public class ChunkController {
         return facade.reindexChunk(chunkId);
     }
 
-    public record ChunkSummary(
-        String id,
-        String documentId,
-        String sourceId,
-        int ordinal,
-        String title,
-        List<String> titlePath,
-        List<String> keywords,
-        String snippet,
-        Integer pageFrom,
-        Integer pageTo,
-        int tokenCount,
-        String editStatus,
-        Instant updatedAt
-    ) {
+    public record ChunkSummary(String id, String documentId, String sourceId, int ordinal, String title,
+        List<String> titlePath, List<String> keywords, String snippet, Integer pageFrom, Integer pageTo, int tokenCount,
+        String editStatus, Instant updatedAt) {
     }
 
-    public record ChunkDetail(
-        String id,
-        String documentId,
-        String sourceId,
-        int ordinal,
-        String title,
-        List<String> titlePath,
-        List<String> keywords,
-        String text,
-        String markdown,
-        Integer pageFrom,
-        Integer pageTo,
-        int tokenCount,
-        int textLength,
-        String editStatus,
-        String updatedBy,
-        Instant createdAt,
-        Instant updatedAt
-    ) {
+    public record ChunkDetail(String id, String documentId, String sourceId, int ordinal, String title,
+        List<String> titlePath, List<String> keywords, String text, String markdown, Integer pageFrom, Integer pageTo,
+        int tokenCount, int textLength, String editStatus, String updatedBy, Instant createdAt, Instant updatedAt) {
     }
 
-    public record CreateChunkRequest(
-        int ordinal,
-        String title,
-        List<String> titlePath,
-        List<String> keywords,
-        String text,
-        String markdown,
-        Integer pageFrom,
-        Integer pageTo
-    ) {
+    public record CreateChunkRequest(int ordinal, String title, List<String> titlePath, List<String> keywords,
+        String text, String markdown, Integer pageFrom, Integer pageTo) {
     }
 
-    public record UpdateChunkRequest(
-        String title,
-        List<String> titlePath,
-        List<String> keywords,
-        String text,
-        String markdown,
-        Integer pageFrom,
-        Integer pageTo
-    ) {
+    public record UpdateChunkRequest(String title, List<String> titlePath, List<String> keywords, String text,
+        String markdown, Integer pageFrom, Integer pageTo) {
     }
 
-    public record ChunkMutationResponse(
-        String id,
-        String documentId,
-        boolean reembedded,
-        boolean reindexed,
-        String editStatus,
-        Instant updatedAt
-    ) {
+    public record ChunkMutationResponse(String id, String documentId, boolean reembedded, boolean reindexed,
+        String editStatus, Instant updatedAt) {
     }
 
     public record ChunkKeywordsRequest(List<String> keywords) {
     }
 
-    public record ChunkKeywordsResponse(
-        String id,
-        List<String> keywords,
-        boolean reembedded,
-        boolean reindexed,
-        Instant updatedAt
-    ) {
+    public record ChunkKeywordsResponse(String id, List<String> keywords, boolean reembedded, boolean reindexed,
+        Instant updatedAt) {
     }
 
     public record DeleteChunkResponse(String chunkId, boolean deleted) {

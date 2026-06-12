@@ -15,6 +15,7 @@ import java.util.List;
 
 /**
  * The ChunkingService.
+ *
  * @author x00000000
  * @since 2026-05-26
  */
@@ -60,27 +61,11 @@ public class ChunkingService {
     private ChunkDraft buildDraft(String title, String content, int ordinal) {
         List<String> titlePath = title == null || title.isBlank() ? List.of() : List.of(title);
         List<String> keywords = KeywordExtractor.extract(content, properties.getMetadata().getMaxKeywords());
-        return new ChunkDraft(
-            ordinal,
-            title,
-            titlePath,
-            keywords,
-            content,
-            content,
-            TokenEstimator.estimate(content),
-            content.length()
-        );
+        return new ChunkDraft(ordinal, title, titlePath, keywords, content, content, TokenEstimator.estimate(content),
+            content.length());
     }
 
-    public record ChunkDraft(
-        int ordinal,
-        String title,
-        List<String> titlePath,
-        List<String> keywords,
-        String text,
-        String markdown,
-        int tokenCount,
-        int textLength
-    ) {
+    public record ChunkDraft(int ordinal, String title, List<String> titlePath, List<String> keywords, String text,
+        String markdown, int tokenCount, int textLength) {
     }
 }

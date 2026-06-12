@@ -8,6 +8,7 @@ import java.util.List;
 
 /**
  * Supported database dialects for the knowledge service.
+ *
  * @author x00000000
  * @since 2026-05-26
  */
@@ -25,7 +26,9 @@ public enum DatabaseDialect {
     POSTGRESQL("postgresql", "org.postgresql.Driver", List.of("classpath:db/migration/common"));
 
     private final String type;
+
     private final String defaultDriverClassName;
+
     private final List<String> flywayLocations;
 
     /**

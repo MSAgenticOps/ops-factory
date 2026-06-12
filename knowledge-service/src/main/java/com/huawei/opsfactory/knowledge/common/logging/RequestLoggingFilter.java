@@ -22,6 +22,7 @@ import java.util.UUID;
 
 /**
  * The RequestLoggingFilter.
+ *
  * @author x00000000
  * @since 2026-05-26
  */
@@ -33,11 +34,8 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(RequestLoggingFilter.class);
 
     @Override
-    protected void doFilterInternal(
-        HttpServletRequest request,
-        HttpServletResponse response,
-        FilterChain filterChain
-    ) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+        throws ServletException, IOException {
         String requestId = resolveRequestId(request);
         response.setHeader(LoggingKeys.REQUEST_ID_HEADER, requestId);
 
@@ -47,13 +45,8 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } finally {
             long durationMs = System.currentTimeMillis() - startedAt;
-            log.info(
-                "HTTP {} {} completed status={} durationMs={}",
-                request.getMethod(),
-                request.getRequestURI(),
-                response.getStatus(),
-                durationMs
-            );
+            log.info("HTTP {} {} completed status={} durationMs={}", request.getMethod(), request.getRequestURI(),
+                response.getStatus(), durationMs);
             MDC.remove(LoggingKeys.REQUEST_ID);
         }
     }

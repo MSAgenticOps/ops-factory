@@ -78,13 +78,11 @@ public class RetrievalMachineController extends BaseRetrievalController {
     @Override
     @GetMapping("/fetch/{chunkId}")
     @BasicAuth
-    public FetchResponse fetch(
-        @PathVariable("chunkId") String chunkId,
+    public FetchResponse fetch(@PathVariable("chunkId") String chunkId,
         @RequestParam(defaultValue = "false") boolean includeNeighbors,
         @RequestParam(defaultValue = "1") int neighborWindow,
         @RequestParam(defaultValue = "true") boolean includeMarkdown,
-        @RequestParam(defaultValue = "true") boolean includeRawText
-    ) {
+        @RequestParam(defaultValue = "true") boolean includeRawText) {
         return facade.fetch(chunkId, includeNeighbors, neighborWindow);
     }
 

@@ -20,6 +20,7 @@ import java.util.List;
 
 /**
  * The JobController.
+ *
  * @author x00000000
  * @since 2026-05-26
  */
@@ -41,10 +42,8 @@ public class JobController {
     }
 
     @GetMapping
-    public PageResponse<JobResponse> listJobs(
-        @RequestParam(defaultValue = "1") int page,
-        @RequestParam(defaultValue = "20") int pageSize
-    ) {
+    public PageResponse<JobResponse> listJobs(@RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "20") int pageSize) {
         return facade.listJobs(page, pageSize);
     }
 
@@ -73,28 +72,10 @@ public class JobController {
         return facade.jobFailures(jobId);
     }
 
-    public record JobResponse(
-        String id,
-        String jobType,
-        String sourceId,
-        String documentId,
-        String status,
-        int progress,
-        String stage,
-        String message,
-        String createdBy,
-        int totalDocuments,
-        int processedDocuments,
-        int successDocuments,
-        int failedDocuments,
-        String currentDocumentId,
-        String currentDocumentName,
-        String errorSummary,
-        Instant startedAt,
-        Instant finishedAt,
-        Instant createdAt,
-        Instant updatedAt
-    ) {
+    public record JobResponse(String id, String jobType, String sourceId, String documentId, String status,
+        int progress, String stage, String message, String createdBy, int totalDocuments, int processedDocuments,
+        int successDocuments, int failedDocuments, String currentDocumentId, String currentDocumentName,
+        String errorSummary, Instant startedAt, Instant finishedAt, Instant createdAt, Instant updatedAt) {
     }
 
     public record JobCancelResponse(String jobId, boolean cancelled, String status, Instant updatedAt) {
@@ -112,13 +93,7 @@ public class JobController {
     public record JobFailuresResponse(String jobId, List<JobFailureEntry> items) {
     }
 
-    public record JobFailureEntry(
-        String documentId,
-        String documentName,
-        String stage,
-        String errorCode,
-        String message,
-        Instant finishedAt
-    ) {
+    public record JobFailureEntry(String documentId, String documentName, String stage, String errorCode,
+        String message, Instant finishedAt) {
     }
 }

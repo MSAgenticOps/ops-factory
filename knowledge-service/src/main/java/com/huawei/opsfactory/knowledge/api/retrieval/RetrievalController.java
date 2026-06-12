@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * The RetrievalController.
+ *
  * @author x00000000
  * @since 2026-05-26
  */
@@ -49,13 +50,11 @@ public class RetrievalController extends BaseRetrievalController {
 
     @Override
     @GetMapping("/fetch/{chunkId}")
-    public FetchResponse fetch(
-        @PathVariable("chunkId") String chunkId,
+    public FetchResponse fetch(@PathVariable("chunkId") String chunkId,
         @RequestParam(defaultValue = "false") boolean includeNeighbors,
         @RequestParam(defaultValue = "1") int neighborWindow,
         @RequestParam(defaultValue = "true") boolean includeMarkdown,
-        @RequestParam(defaultValue = "true") boolean includeRawText
-    ) {
+        @RequestParam(defaultValue = "true") boolean includeRawText) {
         return facade.fetch(chunkId, includeNeighbors, neighborWindow);
     }
 
