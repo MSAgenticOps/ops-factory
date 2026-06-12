@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RefreshCw, Download } from '../../../platform/ui/icons/AppIcons'
 import { useTranslation } from 'react-i18next'
 import { runtime } from '../../../../config/runtime'
@@ -3343,6 +3343,12 @@ export default function BusinessIntelligence() {
     const [error, setError] = useState<string | null>(null)
     const [exporting, setExporting] = useState(false)
     const [reportingPeriod, setReportingPeriod] = useState<ReportingPeriod>(getDefaultReportingPeriod())
+    const invalidRangeNotified = useRef(false)
+
+    const isInvalidRange = reportingPeriod.preset === 'custom'
+        && !!reportingPeriod.startDate
+        && !!reportingPeriod.endDate
+        && reportingPeriod.startDate > reportingPeriod.endDate
 
     const loadOverview = useCallback(async (options?: { forceRefresh?: boolean; startDate?: string; endDate?: string }) => {
         const forceRefresh = options?.forceRefresh === true
@@ -3445,6 +3451,15 @@ export default function BusinessIntelligence() {
 
     // Load data when reporting period changes (also covers initial load)
     useEffect(() => {
+        if (isInvalidRange) {
+            if (!invalidRangeNotified.current) {
+                showToast('error', t('businessIntelligence.invalidDateRange'))
+                invalidRangeNotified.current = true
+            }
+            return
+        }
+        invalidRangeNotified.current = false
+
         if (reportingPeriod.preset === 'custom') {
             if (reportingPeriod.startDate && reportingPeriod.endDate) {
                 void loadOverview({
@@ -3462,14 +3477,14 @@ export default function BusinessIntelligence() {
         } else {
             void loadOverview()
         }
-    }, [reportingPeriod.preset, reportingPeriod.startDate, reportingPeriod.endDate, loadOverview])
+    }, [reportingPeriod.preset, reportingPeriod.startDate, reportingPeriod.endDate, loadOverview, isInvalidRange, showToast, t])
 
     const activeTab = useMemo(() => {
         if (!overview) return null
         return overview.tabContents[activeTabId] || overview.tabContents[overview.tabs[0]?.id || ''] || null
     }, [activeTabId, overview])
 
-    const isExportDisabled = exporting || loading ||
+    const isExportDisabled = exporting || loading || isInvalidRange ||
         (reportingPeriod.preset === 'custom' && (!reportingPeriod.startDate || !reportingPeriod.endDate))
 
     return (

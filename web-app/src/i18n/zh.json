@@ -119,6 +119,7 @@
       "custom": "自定义"
     },
     "dateRangeSeparator": "至",
+    "invalidDateRange": "开始日期不能晚于结束日期。",
     "year": "年",
     "month": "月",
     "day": "日",

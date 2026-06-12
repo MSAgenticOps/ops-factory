@@ -20,8 +20,9 @@ export function getDownloadFilename(response: Response, fallback: string): strin
         }
         // Fall back to filename=
         const asciiMatch = disposition.match(/filename="?([^";]+)"?/i)
-        if (asciiMatch?.[1]) {
-            return asciiMatch[1]
+        const name = asciiMatch?.[1]?.trim()
+        if (name) {
+            return name
         }
     }
     return fallback

@@ -7,7 +7,7 @@
   "base_url": "https://openrouter.ai/api/v1/chat/completions",
   "models": [
     {
-      "name": "",
+      "name": "minimax/minimax-m2.7",
       "context_limit": 128000
     }
   ],

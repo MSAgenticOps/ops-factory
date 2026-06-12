@@ -278,8 +278,18 @@ public class BusinessIntelligenceService {
     public byte[] exportEnhancedWorkbook(String language, String startDate, String endDate) {
         long startedAt = System.currentTimeMillis();
         Path tempDir = null;
+        Path outputLog = null;
         try {
             String validLanguage = "en".equalsIgnoreCase(language) ? "en" : "zh";
+
+            // Validate dates before invoking Python (matches non-export paths).
+            if (startDate != null && !startDate.isBlank()) {
+                parseDateInput(startDate);
+            }
+            if (endDate != null && !endDate.isBlank()) {
+                parseDateInput(endDate);
+            }
+
             tempDir = Files.createTempDirectory("bi-export-");
 
             // Resolve the project directory: baseDir is "./data" relative to CWD,
@@ -331,7 +341,7 @@ public class BusinessIntelligenceService {
             pb.redirectErrorStream(true);
             pb.directory(projectDir);
 
-            Path outputLog = Files.createTempFile("bi-export-", ".log");
+            outputLog = Files.createTempFile("bi-export-", ".log");
             pb.redirectOutput(outputLog.toFile());
 
             Process process = pb.start();
@@ -339,6 +349,7 @@ public class BusinessIntelligenceService {
             String output = readOutputLog(outputLog);
             if (!finished) {
                 process.destroyForcibly();
+                process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS);
                 throw new IllegalStateException("Python export script timed out after 120s. Output: " + output);
             }
 
@@ -359,8 +370,6 @@ public class BusinessIntelligenceService {
                 }
             }
 
-            Files.deleteIfExists(outputLog);
-
             if (xlsxFile == null) {
                 throw new IllegalStateException("No .xlsx file generated in " + tempDir + ". Script output: " + output);
             }
@@ -368,12 +377,20 @@ public class BusinessIntelligenceService {
             byte[] bytes = Files.readAllBytes(xlsxFile);
             log.info("Enhanced export completed language={} byteSize={} durationMs={}", validLanguage, bytes.length, System.currentTimeMillis() - startedAt);
             return bytes;
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Failed to run enhanced export: " + e.getMessage(), e);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to run enhanced export: " + e.getMessage(), e);
         } finally {
+            if (outputLog != null) {
+                try {
+                    Files.deleteIfExists(outputLog);
+                } catch (IOException ignored) {
+                }
+            }
             if (tempDir != null) {
                 deleteTempDir(tempDir);
             }

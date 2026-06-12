@@ -11,20 +11,20 @@ Trigger this skill when the user asks for a monthly operations report, operation
 
 ## Workflow
 
-1. Call `bi_data_service__get_all_metrics` to retrieve all 8 domain KPIs, executive health score, grade, risk radar (`topRisks`), and `dataDateRange`. Record the health score, grade, critical/warning/attention counts, and all domain KPIs.
+1. Call `bi-data-service__get_all_metrics` to retrieve all 8 domain KPIs, executive health score, grade, risk radar (`topRisks`), and `dataDateRange`. Record the health score, grade, critical/warning/attention counts, and all domain KPIs.
 
 2. From the returned `topRisks`, identify the top 3 risk items by severity (Critical > Warning > Attention). For each risk item, note the affected domain.
 
-3. For each of the top 3 risk domains, call the corresponding `bi_data_service__analyze_*` tool with `by_time=true` and `interval=month` to get trend context:
-   - SLA risk → `bi_data_service__analyze_sla_rate`
-   - Incident risk → `bi_data_service__analyze_incident_volume`
-   - Change risk → `bi_data_service__analyze_change_success_rate`
-   - Request risk → `bi_data_service__analyze_request_performance`
-   - Request SLA risk → `bi_data_service__analyze_request_sla_rate`
-   - Problem risk → `bi_data_service__analyze_problem_metrics`
-   - Workforce risk → `bi_data_service__analyze_workforce_performance`
+3. For each of the top 3 risk domains, call the corresponding `bi-data-service__analyze_*` tool with `by_time=true` and `interval=month` to get trend context:
+   - SLA risk → `bi-data-service__analyze_sla_rate`
+   - Incident risk → `bi-data-service__analyze_incident_volume`
+   - Change risk → `bi-data-service__analyze_change_success_rate`
+   - Request risk → `bi-data-service__analyze_request_performance`
+   - Request SLA risk → `bi-data-service__analyze_request_sla_rate`
+   - Problem risk → `bi-data-service__analyze_problem_metrics`
+   - Workforce risk → `bi-data-service__analyze_workforce_performance`
 
-4. If a risk domain involves specific ticket details (e.g. SLA breaches), call `bi_data_service__query_tickets` to retrieve up to 10 relevant sample tickets with text fields for root cause context.
+4. If a risk domain involves specific ticket details (e.g. SLA breaches), call `bi-data-service__query_tickets` to retrieve up to 10 relevant sample tickets with text fields for root cause context.
 
 5. Generate a self-contained HTML report file with embedded Chart.js charts and professional CSS styling. Use the developer `write` tool to save to `./output/monthly-ops-report-{YYYYMMDD}.html`. Do NOT use Auto Visualiser tools — embed all charts directly in the HTML.
 
